@@ -1,8 +1,6 @@
-# java flavor: basics + Java. Family: java.
-#
-# The whole common/install/ directory is uploaded first (the install scripts
-# source sibling files: versions.env, setenv.sh, tomcat.service), then the
-# relevant scripts are run from that uploaded location.
+# tomcat flavor: basics + Java + Tomcat (as systemd). Family: tomcat.
+# (Tomcat implies Java; Maven is intentionally NOT installed — the WAR is built
+# by the docker maven image at build time, not on the runtime VM.)
 packer {
   required_plugins {
     googlecompute = {
@@ -42,26 +40,26 @@ variable "git_sha" {
   default = "unknown"
 }
 
-source "googlecompute" "java" {
+source "googlecompute" "tomcat" {
   project_id          = var.project
   zone                = var.zone
   source_image_family = var.source_image_family
   ssh_username        = "packer"
-  image_name          = "java-v${var.image_version}"
-  image_family        = "java"
+  image_name          = "tomcat-v${var.image_version}"
+  image_family        = "tomcat"
   image_labels = {
-    flavor = "java"
+    flavor = "tomcat"
     jdk    = "24"
+    tomcat = "11-0-8"
     built  = "cloudbuild"
   }
 }
 
 build {
-  sources = ["source.googlecompute.java"]
+  sources = ["source.googlecompute.tomcat"]
 
-  # Upload the shared installers so each script can source its siblings.
   provisioner "file" {
-    source      = "../common/install"
+    source      = "../../scripts"
     destination = "/tmp"
   }
 
@@ -69,13 +67,14 @@ build {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
       "FILES_BASE_URL=${var.files_base_url}",
-      "IMAGE_FLAVOR=java",
+      "IMAGE_FLAVOR=tomcat",
       "GIT_SHA=${var.git_sha}",
     ]
     inline = [
-      "bash /tmp/install/install-basics.sh",
-      "bash /tmp/install/install-java.sh",
-      "bash /tmp/install/write-manifest.sh",
+      "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-java.sh",
+      "bash /tmp/scripts/install-tomcat.sh",
+      "bash /tmp/scripts/write-manifest.sh",
     ]
   }
 }

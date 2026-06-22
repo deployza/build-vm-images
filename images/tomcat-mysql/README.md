@@ -15,13 +15,18 @@ deploy step provisions credentials and databases.
 - `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
 - `install-mysql.sh` — MySQL, `mysql` systemd service
 
-Versions are pinned in [`../common/install/versions.env`](../common/install/versions.env).
+Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
 
 ## Build
 
 ```bash
-gcloud builds submit --config tomcat-mysql-image-cloudbuild.yaml .
+gcloud builds submit --config cloudbuild.yaml .
 ```
+
+Image names are unique per project, so re-running with an unchanged
+`_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
+GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
+one. (The `tomcat-mysql` family pointer just moves to the newest image.)
 
 Consumers launch with `--image-family=tomcat-mysql --image-project=tools-tech-463909`.
 

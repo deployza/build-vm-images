@@ -7,14 +7,14 @@ substitutions:
 
 steps:
   - name: 'hashicorp/packer'
-    dir: images/mysql
-    args: ['init', 'mysql-image.pkr.hcl']
+    dir: images/java
+    args: ['init', 'image.pkr.hcl']
 
   - name: 'hashicorp/packer'
-    dir: images/mysql
+    dir: images/java
     args:
       - build
       - '-var=image_version=${_IMAGE_VERSION}'
       - '-var=zone=${_ZONE}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'mysql-image.pkr.hcl'
+      - 'image.pkr.hcl'

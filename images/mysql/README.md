@@ -14,13 +14,18 @@ image.
 - `install-mysql.sh` — MySQL from the official `dev.mysql.com` apt repo, `mysql`
   systemd service
 
-Versions are pinned in [`../common/install/versions.env`](../common/install/versions.env).
+Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
 
 ## Build
 
 ```bash
-gcloud builds submit --config mysql-image-cloudbuild.yaml .
+gcloud builds submit --config cloudbuild.yaml .
 ```
+
+Image names are unique per project, so re-running with an unchanged
+`_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
+GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
+one. (The `mysql` family pointer just moves to the newest image.)
 
 Consumers launch with `--image-family=mysql --image-project=tools-tech-463909`.
 

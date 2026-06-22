@@ -12,13 +12,18 @@ time and pulled onto the VM at boot (see `build-design.md`).
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
 
-Versions are pinned in [`../common/install/versions.env`](../common/install/versions.env).
+Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
 
 ## Build
 
 ```bash
-gcloud builds submit --config tomcat-image-cloudbuild.yaml .
+gcloud builds submit --config cloudbuild.yaml .
 ```
+
+Image names are unique per project, so re-running with an unchanged
+`_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
+GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
+one. (The `tomcat` family pointer just moves to the newest image.)
 
 Consumers launch with `--image-family=tomcat --image-project=tools-tech-463909`.
 

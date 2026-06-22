@@ -1,5 +1,4 @@
-# tomcat-mysql flavor: basics + Java + Tomcat (systemd) + MySQL (systemd).
-# Family: tomcat-mysql. App server and database co-located on one VM.
+# mysql flavor: basics + MySQL daemon (as systemd). Family: mysql.
 packer {
   required_plugins {
     googlecompute = {
@@ -39,27 +38,25 @@ variable "git_sha" {
   default = "unknown"
 }
 
-source "googlecompute" "tomcat_mysql" {
+source "googlecompute" "mysql" {
   project_id          = var.project
   zone                = var.zone
   source_image_family = var.source_image_family
   ssh_username        = "packer"
-  image_name          = "tomcat-mysql-v${var.image_version}"
-  image_family        = "tomcat-mysql"
+  image_name          = "mysql-v${var.image_version}"
+  image_family        = "mysql"
   image_labels = {
-    flavor = "tomcat-mysql"
-    jdk    = "24"
-    tomcat = "11-0-8"
+    flavor = "mysql"
     mysql  = "8-4"
     built  = "cloudbuild"
   }
 }
 
 build {
-  sources = ["source.googlecompute.tomcat_mysql"]
+  sources = ["source.googlecompute.mysql"]
 
   provisioner "file" {
-    source      = "../common/install"
+    source      = "../../scripts"
     destination = "/tmp"
   }
 
@@ -67,15 +64,13 @@ build {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
       "FILES_BASE_URL=${var.files_base_url}",
-      "IMAGE_FLAVOR=tomcat-mysql",
+      "IMAGE_FLAVOR=mysql",
       "GIT_SHA=${var.git_sha}",
     ]
     inline = [
-      "bash /tmp/install/install-basics.sh",
-      "bash /tmp/install/install-java.sh",
-      "bash /tmp/install/install-tomcat.sh",
-      "bash /tmp/install/install-mysql.sh",
-      "bash /tmp/install/write-manifest.sh",
+      "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-mysql.sh",
+      "bash /tmp/scripts/write-manifest.sh",
     ]
   }
 }

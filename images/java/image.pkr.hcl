@@ -1,4 +1,8 @@
-# mysql flavor: basics + MySQL daemon (as systemd). Family: mysql.
+# java flavor: basics + Java. Family: java.
+#
+# The whole scripts/ directory is uploaded first (the install scripts
+# source sibling files: versions.env, setenv.sh, tomcat.service), then the
+# relevant scripts are run from that uploaded location.
 packer {
   required_plugins {
     googlecompute = {
@@ -38,25 +42,26 @@ variable "git_sha" {
   default = "unknown"
 }
 
-source "googlecompute" "mysql" {
+source "googlecompute" "java" {
   project_id          = var.project
   zone                = var.zone
   source_image_family = var.source_image_family
   ssh_username        = "packer"
-  image_name          = "mysql-v${var.image_version}"
-  image_family        = "mysql"
+  image_name          = "java-v${var.image_version}"
+  image_family        = "java"
   image_labels = {
-    flavor = "mysql"
-    mysql  = "8-4"
+    flavor = "java"
+    jdk    = "24"
     built  = "cloudbuild"
   }
 }
 
 build {
-  sources = ["source.googlecompute.mysql"]
+  sources = ["source.googlecompute.java"]
 
+  # Upload the shared installers so each script can source its siblings.
   provisioner "file" {
-    source      = "../common/install"
+    source      = "../../scripts"
     destination = "/tmp"
   }
 
@@ -64,13 +69,13 @@ build {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
       "FILES_BASE_URL=${var.files_base_url}",
-      "IMAGE_FLAVOR=mysql",
+      "IMAGE_FLAVOR=java",
       "GIT_SHA=${var.git_sha}",
     ]
     inline = [
-      "bash /tmp/install/install-basics.sh",
-      "bash /tmp/install/install-mysql.sh",
-      "bash /tmp/install/write-manifest.sh",
+      "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-java.sh",
+      "bash /tmp/scripts/write-manifest.sh",
     ]
   }
 }

@@ -23,12 +23,12 @@ Tomcat-as-systemd) and store them as image families (e.g. `tomcat`). This is the
 VM-image equivalent of the `docker/` repo (which builds container images).
 
 Packer **provisions the image by running the installers in
-[`images/common/install/`](images/common/install/)**, which live in this repo.
+[`scripts/`](scripts/)**, which live in this repo.
 These are self-contained — there is no build-time dependency on a sibling repo.
 
 > **Self-contained installers.** The installers (`install-basics.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-mysql.sh`, `write-manifest.sh`,
-> `versions.env`, `setenv.sh`, `tomcat.service`) live in `images/common/install/`.
+> `versions.env`, `setenv.sh`, `tomcat.service`) live in the top-level `scripts/`.
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
@@ -37,14 +37,20 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > if a version needs to change in both, change both.
 
 > **Current state.** Four flavors are implemented under `images/<flavor>/`, each
-> with a `<flavor>-image.pkr.hcl` + `<flavor>-image-cloudbuild.yaml` + `README.md`:
+> with an `image.pkr.hcl` + `cloudbuild.yaml` + `README.md`:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`. Shared installers and pinned versions
-> live in `images/common/`.
+> live in the top-level `scripts/`; shared Packer variables live in
+> `images/variables.pkr.hcl`.
 
 ## Conventions
 
-- One `<name>-image.pkr.hcl` + `<name>-image-cloudbuild.yaml` per image.
+- One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
+  the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
+- Image **names** (`<flavor>-v<version>`) are unique per project: rebuilding an
+  existing version hard-fails at image-create (GCE `409 alreadyExists`) and never
+  overwrites. Bump `image_version` to publish; the family pointer advances on its
+  own. No explicit pre-check is needed — GCE enforces this.
 - Cloud Build SA needs `roles/compute.instanceAdmin.v1` +
   `roles/iam.serviceAccountUser` (Packer creates a temp VM); enable
   `compute.googleapis.com`.
@@ -58,43 +64,42 @@ Example structure:
 
 ```
 build-vm-images/
+  scripts/                    # toolchain installers, owned by this repo
+    install-basics.sh
+    install-java.sh
+    install-tomcat.sh
+    install-mysql.sh
+    write-manifest.sh         # bakes /etc/image-manifest.txt (build-design.md §9)
+    versions.env              # single source for pinned versions
+    setenv.sh
+    tomcat.service
   images/
-    common/
-      install/                # toolchain installers, owned by this repo
-        install-basics.sh
-        install-java.sh
-        install-tomcat.sh
-        install-mysql.sh
-        write-manifest.sh     # bakes /etc/image-manifest.txt (build-design.md §9)
-        versions.env          # single source for pinned versions
-        setenv.sh
-        tomcat.service
-      variables.pkr.hcl       # canonical defaults (per-flavor templates copy these)
+    variables.pkr.hcl         # canonical defaults (per-flavor templates copy these)
     java/
-      java-image.pkr.hcl
-      java-image-cloudbuild.yaml
+      image.pkr.hcl
+      cloudbuild.yaml
       README.md
     tomcat/
-      tomcat-image.pkr.hcl
-      tomcat-image-cloudbuild.yaml
+      image.pkr.hcl
+      cloudbuild.yaml
       README.md
     mysql/
-      mysql-image.pkr.hcl
-      mysql-image-cloudbuild.yaml
+      image.pkr.hcl
+      cloudbuild.yaml
       README.md
     tomcat-mysql/
-      tomcat-mysql-image.pkr.hcl
-      tomcat-mysql-image-cloudbuild.yaml
+      image.pkr.hcl
+      cloudbuild.yaml
       README.md
 ```
 
 ### Why this layout
 
 - `images/<flavor>/` keeps each image definition isolated and easy to maintain.
-- `images/common/` contains the shared `install/` provisioning scripts, shared
-  Packer variables, reusable build logic, and base Cloud Build configuration.
-- Each flavor's Packer template references the same `images/common/install/`
-  scripts via a relative path within this repo.
+- `scripts/` contains the shared provisioning installers (owned by this repo).
+- `images/variables.pkr.hcl` holds the shared Packer variable defaults.
+- Each flavor's Packer template references the same `scripts/` installers via a
+  relative path (`../../scripts`) within this repo.
 
 ### Image composition guidance
 
