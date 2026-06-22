@@ -1,0 +1,42 @@
+#!/bin/bash
+# Bake /etc/image-manifest.txt into the image (build-design.md §9). This is the
+# source of truth that cannot drift: `cat /etc/image-manifest.txt` on any VM
+# tells you exactly what is installed.
+#
+# GIT_SHA and IMAGE_FLAVOR are passed in as environment_vars from the Packer
+# provisioner.
+set -euxo pipefail
+
+MANIFEST=/etc/image-manifest.txt
+
+{
+  echo "image-flavor: ${IMAGE_FLAVOR:-unknown}"
+  echo "git-sha:      ${GIT_SHA:-unknown}"
+  echo "built-at:     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo
+
+  if command -v java >/dev/null 2>&1 || [ -x /opt/java/latest/bin/java ]; then
+    echo "== java -version =="
+    /opt/java/latest/bin/java -version 2>&1 || true
+    echo
+  fi
+
+  if [ -d /opt/tomcat ]; then
+    echo "== tomcat version =="
+    cat /opt/tomcat/RELEASE-NOTES 2>/dev/null | head -n 5 || true
+    /opt/java/latest/bin/java -cp /opt/tomcat/lib/catalina.jar org.apache.catalina.util.ServerInfo 2>/dev/null || true
+    echo
+  fi
+
+  if command -v mysql >/dev/null 2>&1; then
+    echo "== mysql --version =="
+    mysql --version 2>&1 || true
+    echo
+  fi
+
+  echo "== dpkg packages =="
+  dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null | sort
+} > "$MANIFEST"
+
+chmod 644 "$MANIFEST"
+cat "$MANIFEST"

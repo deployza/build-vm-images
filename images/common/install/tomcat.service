@@ -1,0 +1,30 @@
+[Unit]
+Description=Apache Tomcat Web Application Container
+After=syslog.target network.target
+
+[Service]
+# User and group to run the service as (recommended to be a non-root user)
+User=tomcat
+Group=tomcat
+
+# Type of service
+Type=forking
+
+# Environment variables (Optional, but good practice)
+Environment="JAVA_HOME=/opt/java/latest"
+
+Environment=PROCESS_NAME=tomcat
+Environment=CATALINA_HOME=/opt/tomcat
+Environment=CATALINA_BASE=/opt/tomcat
+Environment=CATALINA_PID=/opt/tomcat/tomcat.pid
+
+# Commands to start and stop the service
+ExecStart=/opt/tomcat/bin/catalina.sh start
+ExecStop=/opt/tomcat/bin/catalina.sh stop
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
