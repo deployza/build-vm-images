@@ -14,6 +14,13 @@ Type=forking
 Environment="JAVA_HOME=/opt/java/latest"
 
 Environment=PROCESS_NAME=tomcat
+
+# Externalized config + log directories. Also exported (and passed as
+# -Dconfig.dir / -Dlog.dir) by setenv.sh; set here too so they are present in
+# the service environment regardless of how Tomcat is invoked.
+Environment=CONFIG_DIR=/etc/apps
+Environment=LOG_DIR=/var/log/apps
+
 Environment=CATALINA_HOME=/opt/tomcat
 Environment=CATALINA_BASE=/opt/tomcat
 Environment=CATALINA_PID=/opt/tomcat/tomcat.pid

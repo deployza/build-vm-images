@@ -14,6 +14,25 @@ time and pulled onto the VM at boot (see `build-design.md`).
 
 Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
 
+## Deploying WARs
+
+Drop WAR files into Tomcat's default appBase, **`/opt/tomcat/webapps/`**
+(`autoDeploy` picks them up). `app.war` → context `/app`; `ROOT.war` → root `/`.
+
+Config and logs are externalized out of the install tree (FHS-correct) and passed
+to Tomcat both as **environment variables** and as **JVM `-D` properties**:
+
+| Purpose | Location     | Env var      | `-D` property |
+| ------- | ------------ | ------------ | ------------- |
+| Config  | `/etc/apps/` | `CONFIG_DIR` | `config.dir`  |
+| Logs    | `/var/log/apps/` | `LOG_DIR` | `log.dir`     |
+
+The app reads whichever it prefers — `System.getenv("CONFIG_DIR")` or
+`System.getProperty("config.dir")` — and resolves its properties/log paths
+against that (never the JVM working directory). Both roots are created by the
+image, owned `tomcat:tomcat`. Logs under `/var/log/apps/*.log` are rotated by
+`/etc/logrotate.d/tomcat-apps`.
+
 ## Build
 
 ```bash
