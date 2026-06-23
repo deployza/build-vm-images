@@ -12,7 +12,7 @@ time and pulled onto the VM at boot (see `build-design.md`).
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
 
-Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
+Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
 ## Deploying WARs
 

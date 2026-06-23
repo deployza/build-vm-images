@@ -14,7 +14,7 @@ image.
 - `install-mysql.sh` — MySQL from the official `dev.mysql.com` apt repo, `mysql`
   systemd service
 
-Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
+Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
 ## Build
 

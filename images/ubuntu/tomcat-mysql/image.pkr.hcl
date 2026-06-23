@@ -58,9 +58,13 @@ source "googlecompute" "tomcat_mysql" {
 build {
   sources = ["source.googlecompute.tomcat_mysql"]
 
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/scripts"]
+  }
+
   provisioner "file" {
-    source      = "../../scripts"
-    destination = "/tmp"
+    source      = "../../../scripts/ubuntu/"
+    destination = "/tmp/scripts/"
   }
 
   provisioner "shell" {

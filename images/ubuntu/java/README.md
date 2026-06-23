@@ -10,7 +10,7 @@ launchers). For a web app server use [`tomcat`](../tomcat/) instead.
 - `install-basics.sh` — apt basics + gcloud CLI
 - `install-java.sh` — JDK under `/opt/java`, symlinked `/opt/java/latest`
 
-Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
+Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
 ## Build
 
@@ -21,7 +21,7 @@ gcloud builds submit --config cloudbuild.yaml .
 Local dry run (needs the Packer CLI + GCP creds):
 
 ```bash
-cd images/java
+cd images/ubuntu/java
 packer init image.pkr.hcl
 packer build -var=image_version=1-0-0 image.pkr.hcl
 ```

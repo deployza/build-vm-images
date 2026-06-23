@@ -58,9 +58,13 @@ source "googlecompute" "tomcat" {
 build {
   sources = ["source.googlecompute.tomcat"]
 
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/scripts"]
+  }
+
   provisioner "file" {
-    source      = "../../scripts"
-    destination = "/tmp"
+    source      = "../../../scripts/ubuntu/"
+    destination = "/tmp/scripts/"
   }
 
   provisioner "shell" {

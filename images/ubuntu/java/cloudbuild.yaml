@@ -7,11 +7,11 @@ substitutions:
 
 steps:
   - name: 'hashicorp/packer'
-    dir: images/tomcat
+    dir: images/ubuntu/java
     args: ['init', 'image.pkr.hcl']
 
   - name: 'hashicorp/packer'
-    dir: images/tomcat
+    dir: images/ubuntu/java
     args:
       - build
       - '-var=image_version=${_IMAGE_VERSION}'

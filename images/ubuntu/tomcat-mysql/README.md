@@ -15,7 +15,7 @@ deploy step provisions credentials and databases.
 - `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
 - `install-mysql.sh` — MySQL, `mysql` systemd service
 
-Versions are pinned in [`../../scripts/versions.env`](../../scripts/versions.env).
+Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
 ## Build
 

@@ -23,12 +23,20 @@ Tomcat-as-systemd) and store them as image families (e.g. `tomcat`). This is the
 VM-image equivalent of the `docker/` repo (which builds container images).
 
 Packer **provisions the image by running the installers in
-[`scripts/`](scripts/)**, which live in this repo.
+[`scripts/<os>/`](scripts/)**, which live in this repo.
 These are self-contained — there is no build-time dependency on a sibling repo.
+
+> **OS-keyed layout.** Both `scripts/` and `images/` are keyed by base OS
+> (`scripts/<os>/`, `images/<os>/<flavor>/`) so the repo can support more than one
+> base distro without coupling their installers. Ubuntu is the only OS implemented
+> today (`scripts/ubuntu/`, `images/ubuntu/`). A future OS (e.g. CentOS/Rocky) gets
+> its own parallel tree (`scripts/centos/`, `images/centos/`) — the two are kept
+> **independent**, not merged behind a package-manager shim, because RHEL-family
+> divergence (SELinux, firewalld, repo RPMs, dnf, package names) is large.
 
 > **Self-contained installers.** The installers (`install-basics.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-mysql.sh`, `write-manifest.sh`,
-> `versions.env`, `setenv.sh`, `tomcat.service`) live in the top-level `scripts/`.
+> `versions.env`, `setenv.sh`, `tomcat.service`) live under `scripts/<os>/`.
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
@@ -36,11 +44,11 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > not a shared source**. Do not reintroduce a cross-repo "single source" coupling;
 > if a version needs to change in both, change both.
 
-> **Current state.** Four flavors are implemented under `images/<flavor>/`, each
-> with an `image.pkr.hcl` + `cloudbuild.yaml` + `README.md`:
+> **Current state.** Four flavors are implemented under `images/ubuntu/<flavor>/`,
+> each with an `image.pkr.hcl` + `cloudbuild.yaml` + `README.md`:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`. Shared installers and pinned versions
-> live in the top-level `scripts/`; shared Packer variables live in
-> `images/variables.pkr.hcl`.
+> live in `scripts/ubuntu/`; shared Packer variables live in
+> `images/ubuntu/variables.pkr.hcl` (per-OS).
 
 ## Conventions
 
@@ -64,46 +72,53 @@ Example structure:
 
 ```
 build-vm-images/
-  scripts/                    # toolchain installers, owned by this repo
-    install-basics.sh
-    install-java.sh
-    install-tomcat.sh
-    install-mysql.sh
-    write-manifest.sh         # bakes /etc/image-manifest.txt (build-design.md §9)
-    versions.env              # single source for pinned versions
-    setenv.sh
-    tomcat.service
+  scripts/
+    ubuntu/                   # toolchain installers for Ubuntu, owned by this repo
+      install-basics.sh
+      install-java.sh
+      install-tomcat.sh
+      install-mysql.sh
+      write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
+      versions.env            # single source for pinned versions
+      setenv.sh
+      tomcat.service
   images/
-    variables.pkr.hcl         # canonical defaults (per-flavor templates copy these)
-    java/
-      image.pkr.hcl
-      cloudbuild.yaml
-      README.md
-    tomcat/
-      image.pkr.hcl
-      cloudbuild.yaml
-      README.md
-    mysql/
-      image.pkr.hcl
-      cloudbuild.yaml
-      README.md
-    tomcat-mysql/
-      image.pkr.hcl
-      cloudbuild.yaml
-      README.md
+    ubuntu/
+      variables.pkr.hcl       # per-OS defaults (per-flavor templates copy these)
+      java/
+        image.pkr.hcl
+        cloudbuild.yaml
+        README.md
+      tomcat/
+        image.pkr.hcl
+        cloudbuild.yaml
+        README.md
+      mysql/
+        image.pkr.hcl
+        cloudbuild.yaml
+        README.md
+      tomcat-mysql/
+        image.pkr.hcl
+        cloudbuild.yaml
+        README.md
 ```
+
+A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
+`images/centos/<flavor>/` trees — never by branching inside the Ubuntu scripts.
 
 ### Why this layout
 
-- `images/<flavor>/` keeps each image definition isolated and easy to maintain.
-- `scripts/` contains the shared provisioning installers (owned by this repo).
-- `images/variables.pkr.hcl` holds the shared Packer variable defaults.
-- Each flavor's Packer template references the same `scripts/` installers via a
-  relative path (`../../scripts`) within this repo.
+- `images/<os>/<flavor>/` keeps each image definition isolated and easy to maintain.
+- `scripts/<os>/` contains the shared provisioning installers (owned by this repo).
+- `images/<os>/variables.pkr.hcl` holds the per-OS Packer variable defaults.
+- Each flavor's Packer template references its OS's installers via a relative path
+  (`../../../scripts/<os>`) within this repo. The `file` provisioner uploads them
+  to `/tmp/scripts/` (a `mkdir -p /tmp/scripts` shell step runs first so the
+  trailing-slash contents copy has a target).
 
 ### Image composition guidance
 
-Each `images/<flavor>/` folder produces one image **family**. The flavor folder
+Each `images/<os>/<flavor>/` folder produces one image **family**. The flavor folder
 name and the family name match. The `tomcat` flavor is the one `build-design.md`
 uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 
