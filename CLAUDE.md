@@ -69,6 +69,14 @@ These are self-contained — there is no build-time dependency on a sibling repo
 - Cloud Build SA needs `roles/compute.instanceAdmin.v1` +
   `roles/iam.serviceAccountUser` (Packer creates a temp VM); enable
   `compute.googleapis.com`.
+- The templates set no `network`/`subnetwork`, so the temp bake VM lands on the
+  project's **`default`** VPC — it must exist (`gcloud compute networks create
+  default --subnet-mode=auto`, plus a tcp:22 firewall rule). A missing one fails
+  with `Error 400 … 'global/networks/default' … cannot be found`. **Use a
+  throwaway/isolated VPC only — never a Shared VPC or one holding production
+  assets:** the bake VM runs the `install-*.sh` provisioners as root and is
+  SSH-reachable, so a tampered installer would execute inside whatever network it
+  sits in. See `build-design.md` §3 for the commands and rationale.
 - See `build-design.md` §3 in `build-docs` for the full template and rationale.
 
 ## Recommended repository layout
