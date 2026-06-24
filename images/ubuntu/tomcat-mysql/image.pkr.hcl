@@ -70,7 +70,7 @@ source "googlecompute" "tomcat_mysql" {
   project_id              = var.project
   zone                    = var.zone
   source_image_family     = var.source_image_family
-  source_image_project_id = var.source_image_project_id
+  source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
   image_name              = "tomcat-mysql-v${var.image_version}"
   image_family            = "tomcat-mysql"
