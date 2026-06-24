@@ -34,6 +34,12 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  if command -v gitea >/dev/null 2>&1; then
+    echo "== gitea --version =="
+    gitea --version 2>&1 || true
+    echo
+  fi
+
   echo "== dpkg packages =="
   dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null | sort
 } > "$MANIFEST"

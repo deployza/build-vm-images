@@ -17,7 +17,15 @@ variable "zone" {
 
 variable "source_image_family" {
   type    = string
-  default = "ubuntu-2504-amd64"
+  default = "ubuntu-2404-lts-amd64"
+}
+
+# The GCE project that hosts the source image family. Ubuntu families live in
+# ubuntu-os-cloud; without this Packer scans GCE's full default public-image
+# project list and 404s on the Ubuntu family.
+variable "source_image_project_id" {
+  type    = string
+  default = "ubuntu-os-cloud"
 }
 
 variable "image_version" {

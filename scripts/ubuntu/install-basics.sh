@@ -14,6 +14,7 @@ apt-get install -y \
     sed \
     software-properties-common \
     unzip \
+    vim \
     wget \
     libfreetype6 \
     libfreetype6-dev

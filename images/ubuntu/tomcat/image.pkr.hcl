@@ -22,7 +22,12 @@ variable "zone" {
 
 variable "source_image_family" {
   type    = string
-  default = "ubuntu-2504-amd64"
+  default = "ubuntu-2404-lts-amd64"
+}
+
+variable "source_image_project_id" {
+  type    = string
+  default = "ubuntu-os-cloud"
 }
 
 variable "image_version" {
@@ -41,12 +46,13 @@ variable "git_sha" {
 }
 
 source "googlecompute" "tomcat" {
-  project_id          = var.project
-  zone                = var.zone
-  source_image_family = var.source_image_family
-  ssh_username        = "packer"
-  image_name          = "tomcat-v${var.image_version}"
-  image_family        = "tomcat"
+  project_id              = var.project
+  zone                    = var.zone
+  source_image_family     = var.source_image_family
+  source_image_project_id = var.source_image_project_id
+  ssh_username            = "packer"
+  image_name              = "tomcat-v${var.image_version}"
+  image_family            = "tomcat"
   image_labels = {
     flavor = "tomcat"
     jdk    = "24"
