@@ -79,6 +79,57 @@ These are self-contained — there is no build-time dependency on a sibling repo
   sits in. See `build-design.md` §3 for the commands and rationale.
 - See `build-design.md` §3 in `build-docs` for the full template and rationale.
 
+## One-time project setup (prerequisites for a successful build)
+
+A Cloud Build run will not succeed until **all** of the following exist in the
+target GCP project. These are one-time, per-project steps.
+
+1. **Enable the Compute API:**
+   ```bash
+   gcloud services enable compute.googleapis.com
+   ```
+
+2. **Grant the Cloud Build service account the roles Packer needs.** Packer
+   creates a temporary "bake" VM, SSHes in to run the `install-*.sh`
+   provisioners as root, snapshots the disk into an image, then deletes the VM.
+   The Cloud Build SA is the identity doing all of that:
+   ```bash
+   PROJECT_ID="$(gcloud config get-value project)"
+   PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+   CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+   # Create / manage / delete the temp bake VM
+   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+     --member="serviceAccount:${CB_SA}" \
+     --role="roles/compute.instanceAdmin.v1"
+
+   # Let the SA attach a service account to that VM (required, or VM creation
+   # fails with "does not have permission to act as ...")
+   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+     --member="serviceAccount:${CB_SA}" \
+     --role="roles/iam.serviceAccountUser"
+   ```
+
+3. **Create the `default` VPC with SSH ingress.** The templates set no
+   `network`/`subnetwork`, so the bake VM lands on the `default` VPC and Packer
+   must reach it over tcp:22. A missing network fails with
+   `Error 400 … 'global/networks/default' … cannot be found`; a missing SSH rule
+   leaves the build hanging on the SSH connection.
+   ```bash
+   gcloud compute networks create default --subnet-mode=auto
+
+   gcloud compute firewall-rules create default-allow-ssh \
+     --network=default \
+     --direction=INGRESS \
+     --action=ALLOW \
+     --rules=tcp:22 \
+     --source-ranges=35.235.240.0/20   # IAP range; widen only if needed
+   ```
+   **Use a throwaway/isolated VPC only — never a Shared VPC or one holding
+   production assets:** the bake VM runs the installers as root and is
+   SSH-reachable, so a tampered installer would execute inside whatever network
+   it sits in.
+
 ## Recommended repository layout
 
 To support multiple VM images with shared provisioning, organize the repo into image-specific folders plus common shared definitions.
