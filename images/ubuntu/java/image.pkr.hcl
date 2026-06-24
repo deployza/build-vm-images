@@ -47,16 +47,16 @@ variable "git_sha" {
   default = null
 }
 
-# Tool versions are read from scripts/ubuntu/versions.env — the same single
-# source the installers use — so labels/description can never drift from what is
-# actually installed. Packer's file() resolves a relative path against path.root
-# (the template's own directory, images/ubuntu/java/), NOT packer's working
-# directory — so the path must climb back up to the repo root with "../".
-# (The `source = "scripts/ubuntu/"` file provisioner below is different: provisioner
-# source paths resolve against the working dir, i.e. the repo root /workspace.)
-locals {
-  versions    = file("${path.root}/../../../scripts/ubuntu/versions.env")
-  jdk_version = regex("(?m)^JDK_VERSION=(\\S+)", local.versions)[0]
+# Tool versions come from scripts/ubuntu/versions.env — the same single source the
+# installers use — so labels/description can never drift from what is installed.
+# Packer's file() can't read it directly: file() resolves relative to path.root
+# (the template dir) and strips any ".." that would climb above it, so a sibling
+# like scripts/ubuntu/ is unreachable. Instead cloudbuild.yaml sources versions.env
+# and passes this as -var (the same path image_version/git_sha take). null default
+# => `validate` fails fast if a version wasn't passed, rather than baking a blank.
+variable "jdk_version" {
+  type    = string
+  default = null
 }
 
 source "googlecompute" "java" {
@@ -67,10 +67,10 @@ source "googlecompute" "java" {
   ssh_username            = "packer"
   image_name              = "java-v${var.image_version}"
   image_family            = "java"
-  image_description       = "${var.source_image_family} + JDK ${local.jdk_version}. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + JDK ${var.jdk_version}. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "java"
-    jdk    = replace(local.jdk_version, ".", "-")
+    jdk    = replace(var.jdk_version, ".", "-")
     built  = "cloudbuild"
   }
 }

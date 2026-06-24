@@ -28,16 +28,23 @@ steps:
   - name: 'hashicorp/packer'
     args: ['init', 'images/ubuntu/tomcat/image.pkr.hcl']
 
+  # versions.env (the installers' single source of truth) is sourced here and the
+  # pinned versions passed as -var, because packer's file() can't read it from the
+  # template (it lives in a sibling dir, above the template's path.root). Override
+  # the image entrypoint to sh so we can source the file before invoking packer.
+  # $$VAR escapes a shell var from Cloud Build's own ${...} substitution.
   - name: 'hashicorp/packer'
+    entrypoint: 'sh'
     args:
-      - validate
-      - '-var=image_version=${_IMAGE_VERSION}'
-      - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/tomcat/image.pkr.hcl'
-
-  - name: 'hashicorp/packer'
-    args:
-      - build
-      - '-var=image_version=${_IMAGE_VERSION}'
-      - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/tomcat/image.pkr.hcl'
+      - -c
+      - |
+        set -e
+        . /workspace/scripts/ubuntu/versions.env
+        for cmd in validate build; do
+          packer $$cmd \
+            -var=image_version=${_IMAGE_VERSION} \
+            -var=git_sha=${COMMIT_SHA} \
+            -var=jdk_version=$$JDK_VERSION \
+            -var=tomcat_version=$$TOMCAT_VERSION \
+            images/ubuntu/tomcat/image.pkr.hcl
+        done
