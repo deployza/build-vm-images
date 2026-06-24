@@ -5,6 +5,26 @@ substitutions:
   _IMAGE_VERSION: '1-0-0'
 
 steps:
+  - name: 'gcr.io/cloud-builders/git'
+    id: debug-source
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        echo "===== Cloud Build source debug ====="
+        echo "COMMIT_SHA  = ${COMMIT_SHA}"
+        echo "SHORT_SHA   = ${SHORT_SHA}"
+        echo "BRANCH_NAME = ${BRANCH_NAME}"
+        echo "REPO_NAME   = ${REPO_NAME}"
+        echo "PWD         = $(pwd)"
+        echo "----- git log (top 3) -----"
+        git -C /workspace log --oneline -3 2>/dev/null || echo "(no .git in workspace)"
+        echo "----- workspace tree -----"
+        ls -la /workspace
+        echo "----- this flavor's installers -----"
+        ls -la /workspace/scripts/ubuntu
+        echo "===================================="
+
   - name: 'hashicorp/packer'
     args: ['init', 'images/ubuntu/mysql/image.pkr.hcl']
 
@@ -13,7 +33,6 @@ steps:
       - validate
       - '-var=image_version=${_IMAGE_VERSION}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/variables.pkr.hcl'
       - 'images/ubuntu/mysql/image.pkr.hcl'
 
   - name: 'hashicorp/packer'
@@ -21,5 +40,4 @@ steps:
       - build
       - '-var=image_version=${_IMAGE_VERSION}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/variables.pkr.hcl'
       - 'images/ubuntu/mysql/image.pkr.hcl'

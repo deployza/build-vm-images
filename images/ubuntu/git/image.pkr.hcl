@@ -19,6 +19,18 @@ variable "source_image_project_id" {
   default = "ubuntu-os-cloud"
 }
 
+# GCP target project and zone. Shared across all flavors; defaults baked in here
+# (previously in images/ubuntu/variables.pkr.hcl). Override with -var as needed.
+variable "project" {
+  type    = string
+  default = "tools-tech-463909"
+}
+
+variable "zone" {
+  type    = string
+  default = "asia-east1-b"
+}
+
 # No defaults: Cloud Build (or a local build) MUST pass these. A null default
 # makes Packer fail at `validate` if the value is missing, rather than silently
 # baking a placeholder (e.g. version "1-0-0" or git "unknown").

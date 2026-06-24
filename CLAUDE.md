@@ -48,9 +48,10 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + `README.md`:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `git` (Gitea). Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
-> `scripts/ubuntu/`; the cross-flavor Packer variables (`project`, `zone`) live in
-> `images/ubuntu/variables.pkr.hcl`, which each build passes to `packer` alongside
-> the flavor template.
+> `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
+> defaults) inside each flavor's `image.pkr.hcl` — Packer's `validate`/`build`
+> take a single template (or directory), not a list of files, so there is no
+> separate shared vars file to pass alongside.
 
 ## Conventions
 
@@ -86,7 +87,6 @@ build-vm-images/
       tomcat.service
   images/
     ubuntu/
-      variables.pkr.hcl       # cross-flavor vars (project, zone); passed to packer alongside each template
       java/
         image.pkr.hcl
         cloudbuild.yaml
@@ -112,11 +112,13 @@ A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
 
 - `images/<os>/<flavor>/` keeps each image definition isolated and easy to maintain.
 - `scripts/<os>/` contains the shared provisioning installers (owned by this repo).
-- `images/<os>/variables.pkr.hcl` holds the cross-flavor Packer variables
-  (`project`, `zone`). It is **not** auto-merged — each `cloudbuild.yaml` passes it
-  to `packer build` alongside the flavor's `image.pkr.hcl`. Per-flavor and
-  per-build values (source image, `image_version`, tool versions) stay in the
-  flavor template / `versions.env`.
+- The GCP `project`/`zone` variables are declared (with defaults) inside each
+  flavor's `image.pkr.hcl`. Packer's `validate`/`build` accept only a single
+  template (or one directory) as their positional argument — not a list of files —
+  so there is no separate cross-flavor vars file passed alongside the template.
+  Override with `-var=project=…` / `-var=zone=…` if a build needs a different
+  target. Per-build values (`image_version`, `git_sha`) are passed as `-var` by
+  each `cloudbuild.yaml`; tool versions stay in `versions.env`.
 - Each flavor's Packer template references its OS's installers via a repo-root
   relative path (`scripts/<os>/`) within this repo. Packer resolves the `file`
   provisioner `source` against its working directory, and the `cloudbuild.yaml`

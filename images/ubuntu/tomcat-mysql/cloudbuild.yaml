@@ -33,7 +33,6 @@ steps:
       - validate
       - '-var=image_version=${_IMAGE_VERSION}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/variables.pkr.hcl'
       - 'images/ubuntu/tomcat-mysql/image.pkr.hcl'
 
   - name: 'hashicorp/packer'
@@ -41,5 +40,4 @@ steps:
       - build
       - '-var=image_version=${_IMAGE_VERSION}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'images/ubuntu/variables.pkr.hcl'
       - 'images/ubuntu/tomcat-mysql/image.pkr.hcl'

@@ -26,12 +26,11 @@ Local dry run (needs the Packer CLI + GCP creds), also from the repo root:
 ```bash
 packer init images/ubuntu/java/image.pkr.hcl
 packer build -var=image_version=1-0-0 \
-  images/ubuntu/variables.pkr.hcl \
   images/ubuntu/java/image.pkr.hcl
 ```
 
-The shared `variables.pkr.hcl` (holding `project`/`zone`) must be passed
-alongside the flavor template — Packer does not auto-merge it.
+`project`/`zone` are declared (with defaults) inside the flavor template itself;
+override either with `-var=project=…` / `-var=zone=…` if needed.
 
 Image names are unique per project, so re-running with an unchanged
 `image_version` **fails** at the image-create step (GCE `409 alreadyExists`) —
