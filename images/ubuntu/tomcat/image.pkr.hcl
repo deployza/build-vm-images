@@ -45,6 +45,17 @@ variable "git_sha" {
   default = "unknown"
 }
 
+# Dotted form feeds the description; the dash form (label-safe) is derived below.
+variable "jdk_version" {
+  type    = string
+  default = "24"
+}
+
+variable "tomcat_version" {
+  type    = string
+  default = "11.0.8"
+}
+
 source "googlecompute" "tomcat" {
   project_id              = var.project
   zone                    = var.zone
@@ -53,10 +64,11 @@ source "googlecompute" "tomcat" {
   ssh_username            = "packer"
   image_name              = "tomcat-v${var.image_version}"
   image_family            = "tomcat"
+  image_description       = "Ubuntu 24.04 LTS + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "tomcat"
-    jdk    = "24"
-    tomcat = "11-0-8"
+    jdk    = replace(var.jdk_version, ".", "-")
+    tomcat = replace(var.tomcat_version, ".", "-")
     built  = "cloudbuild"
   }
 }

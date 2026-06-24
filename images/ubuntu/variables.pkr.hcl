@@ -38,3 +38,24 @@ variable "files_base_url" {
   type    = string
   default = "https://storage.googleapis.com/files.deployza.com"
 }
+
+# Software versions. These feed BOTH image_labels (GCE-safe dash form, e.g.
+# "11-0-8") and the human-readable image_description (dotted form, e.g.
+# "11.0.8"), so each flavor template bumps a version in exactly one place.
+# Keep these in sync with scripts/ubuntu/versions.env (the install-time source
+# of truth). Only the flavors that install a given tool declare its variables.
+
+variable "jdk_version" {
+  type    = string
+  default = "24"
+}
+
+variable "tomcat_version" {
+  type    = string
+  default = "11.0.8"
+}
+
+variable "mysql_version" {
+  type    = string
+  default = "8.4"
+}

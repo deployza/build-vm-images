@@ -47,6 +47,12 @@ variable "git_sha" {
   default = "unknown"
 }
 
+# Dotted form feeds the description; the dash form (label-safe) is derived below.
+variable "jdk_version" {
+  type    = string
+  default = "24"
+}
+
 source "googlecompute" "java" {
   project_id              = var.project
   zone                    = var.zone
@@ -55,9 +61,10 @@ source "googlecompute" "java" {
   ssh_username            = "packer"
   image_name              = "java-v${var.image_version}"
   image_family            = "java"
+  image_description       = "Ubuntu 24.04 LTS + JDK ${var.jdk_version}. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "java"
-    jdk    = "24"
+    jdk    = replace(var.jdk_version, ".", "-")
     built  = "cloudbuild"
   }
 }

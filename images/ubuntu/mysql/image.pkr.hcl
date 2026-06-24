@@ -43,6 +43,12 @@ variable "git_sha" {
   default = "unknown"
 }
 
+# Dotted form feeds the description; the dash form (label-safe) is derived below.
+variable "mysql_version" {
+  type    = string
+  default = "8.4"
+}
+
 source "googlecompute" "mysql" {
   project_id              = var.project
   zone                    = var.zone
@@ -51,9 +57,10 @@ source "googlecompute" "mysql" {
   ssh_username            = "packer"
   image_name              = "mysql-v${var.image_version}"
   image_family            = "mysql"
+  image_description       = "Ubuntu 24.04 LTS + MySQL ${var.mysql_version} daemon (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "mysql"
-    mysql  = "8-4"
+    mysql  = replace(var.mysql_version, ".", "-")
     built  = "cloudbuild"
   }
 }
