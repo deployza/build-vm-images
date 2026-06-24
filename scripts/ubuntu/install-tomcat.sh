@@ -6,8 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=versions.env
 source "$SCRIPT_DIR/versions.env"
 
-FILES_BASE_URL=${FILES_BASE_URL:-https://storage.googleapis.com/files.deployza.com}
-
 export JAVA_HOME=/opt/java/latest
 export TOMCAT_HOME=/opt/tomcat
 TOMCAT_ARCHIVE="${TOMCAT_TAR_FILE}"

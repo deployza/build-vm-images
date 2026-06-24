@@ -3,18 +3,23 @@ options:
 
 substitutions:
   _IMAGE_VERSION: '1-0-0'
-  _ZONE: asia-east1-b
 
 steps:
   - name: 'hashicorp/packer'
-    dir: images/ubuntu/tomcat
-    args: ['init', 'image.pkr.hcl']
+    args: ['init', 'images/ubuntu/tomcat/image.pkr.hcl']
 
   - name: 'hashicorp/packer'
-    dir: images/ubuntu/tomcat
+    args:
+      - validate
+      - '-var=image_version=${_IMAGE_VERSION}'
+      - '-var=git_sha=${COMMIT_SHA}'
+      - 'images/ubuntu/variables.pkr.hcl'
+      - 'images/ubuntu/tomcat/image.pkr.hcl'
+
+  - name: 'hashicorp/packer'
     args:
       - build
       - '-var=image_version=${_IMAGE_VERSION}'
-      - '-var=zone=${_ZONE}'
       - '-var=git_sha=${COMMIT_SHA}'
-      - 'image.pkr.hcl'
+      - 'images/ubuntu/variables.pkr.hcl'
+      - 'images/ubuntu/tomcat/image.pkr.hcl'

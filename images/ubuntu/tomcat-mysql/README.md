@@ -19,8 +19,10 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 
 ## Build
 
+Run from the **repo root** (the build context must include `scripts/`):
+
 ```bash
-gcloud builds submit --config cloudbuild.yaml .
+gcloud builds submit --config images/ubuntu/tomcat-mysql/cloudbuild.yaml .
 ```
 
 Image names are unique per project, so re-running with an unchanged

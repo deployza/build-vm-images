@@ -8,16 +8,6 @@ packer {
   }
 }
 
-variable "project" {
-  type    = string
-  default = "tools-tech-463909"
-}
-
-variable "zone" {
-  type    = string
-  default = "asia-east1-b"
-}
-
 variable "source_image_family" {
   type    = string
   default = "ubuntu-2404-lts-amd64"
@@ -28,25 +18,26 @@ variable "source_image_project_id" {
   default = "ubuntu-os-cloud"
 }
 
+# No defaults: Cloud Build (or a local build) MUST pass these. A null default
+# makes Packer fail at `validate` if the value is missing, rather than silently
+# baking a placeholder (e.g. version "1-0-0" or git "unknown").
 variable "image_version" {
   type    = string
-  default = "1-0-0"
-}
-
-variable "files_base_url" {
-  type    = string
-  default = "https://storage.googleapis.com/files.deployza.com"
+  default = null
 }
 
 variable "git_sha" {
   type    = string
-  default = "unknown"
+  default = null
 }
 
-# Dotted form feeds the description; the dash form (label-safe) is derived below.
-variable "mysql_version" {
-  type    = string
-  default = "8.4"
+# Tool versions are read from scripts/ubuntu/versions.env — the same single
+# source the installers use — so labels/description can never drift from what is
+# actually installed. path.root is this template's directory, so the relative
+# path is stable whether packer runs from /workspace or this folder.
+locals {
+  versions      = file("${path.root}/../../../scripts/ubuntu/versions.env")
+  mysql_version = regex("(?m)^MYSQL_VERSION=(\\S+)", local.versions)[0]
 }
 
 source "googlecompute" "mysql" {
@@ -57,10 +48,10 @@ source "googlecompute" "mysql" {
   ssh_username            = "packer"
   image_name              = "mysql-v${var.image_version}"
   image_family            = "mysql"
-  image_description       = "Ubuntu 24.04 LTS + MySQL ${var.mysql_version} daemon (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + MySQL ${local.mysql_version} daemon (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "mysql"
-    mysql  = replace(var.mysql_version, ".", "-")
+    mysql  = replace(local.mysql_version, ".", "-")
     built  = "cloudbuild"
   }
 }
@@ -73,14 +64,13 @@ build {
   }
 
   provisioner "file" {
-    source      = "../../../scripts/ubuntu/"
+    source      = "scripts/ubuntu/"
     destination = "/tmp/scripts/"
   }
 
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
-      "FILES_BASE_URL=${var.files_base_url}",
       "IMAGE_FLAVOR=mysql",
       "GIT_SHA=${var.git_sha}",
     ]

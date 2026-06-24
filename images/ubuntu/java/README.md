@@ -14,17 +14,24 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 
 ## Build
 
-```bash
-gcloud builds submit --config cloudbuild.yaml .
-```
-
-Local dry run (needs the Packer CLI + GCP creds):
+Run from the **repo root** (the build context must include `scripts/`, and the
+Packer templates reference installers by repo-root-relative path):
 
 ```bash
-cd images/ubuntu/java
-packer init image.pkr.hcl
-packer build -var=image_version=1-0-0 image.pkr.hcl
+gcloud builds submit --config images/ubuntu/java/cloudbuild.yaml .
 ```
+
+Local dry run (needs the Packer CLI + GCP creds), also from the repo root:
+
+```bash
+packer init images/ubuntu/java/image.pkr.hcl
+packer build -var=image_version=1-0-0 \
+  images/ubuntu/variables.pkr.hcl \
+  images/ubuntu/java/image.pkr.hcl
+```
+
+The shared `variables.pkr.hcl` (holding `project`/`zone`) must be passed
+alongside the flavor template — Packer does not auto-merge it.
 
 Image names are unique per project, so re-running with an unchanged
 `image_version` **fails** at the image-create step (GCE `409 alreadyExists`) —
