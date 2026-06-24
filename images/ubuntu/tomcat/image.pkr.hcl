@@ -47,10 +47,13 @@ variable "git_sha" {
 
 # Tool versions are read from scripts/ubuntu/versions.env — the same single
 # source the installers use — so labels/description can never drift from what is
-# actually installed. path.root is this template's directory, so the relative
-# path is stable whether packer runs from /workspace or this folder.
+# actually installed. Packer's file() refuses to read outside path.root (it
+# strips leading ".." segments), so a path.root-relative traversal collapses and
+# fails. The path is instead relative to packer's working directory, which is the
+# repo root (/workspace) — the same assumption the `source = "scripts/ubuntu/"`
+# file provisioner below already makes, and how every cloudbuild.yaml invokes it.
 locals {
-  versions       = file("${path.root}/../../../scripts/ubuntu/versions.env")
+  versions       = file("scripts/ubuntu/versions.env")
   jdk_version    = regex("(?m)^JDK_VERSION=(\\S+)", local.versions)[0]
   tomcat_version = regex("(?m)^TOMCAT_VERSION=(\\S+)", local.versions)[0]
 }

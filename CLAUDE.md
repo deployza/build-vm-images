@@ -55,6 +55,10 @@ These are self-contained — there is no build-time dependency on a sibling repo
 
 ## Conventions
 
+- **Do not run `packer` locally** (`validate`, `build`, `init`, `fmt`). Packer is
+  not installed in this environment, and these templates target GCE — builds only
+  run in Cloud Build (from the repo root, `/workspace`). Reason about template
+  correctness by reading the HCL; the real validation is the next Cloud Build run.
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
