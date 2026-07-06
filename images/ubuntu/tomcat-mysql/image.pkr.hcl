@@ -72,7 +72,7 @@ source "googlecompute" "tomcat_mysql" {
   source_image_family     = var.source_image_family
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
-  image_name              = "tomcat-mysql-v${var.image_version}"
+  image_name              = "tomcat-mysql-${var.image_version}"
   image_family            = "tomcat-mysql"
   image_description       = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd) + MySQL ${var.mysql_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {

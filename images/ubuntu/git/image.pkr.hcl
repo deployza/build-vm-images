@@ -62,7 +62,7 @@ source "googlecompute" "git" {
   source_image_family     = var.source_image_family
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
-  image_name              = "git-v${var.image_version}"
+  image_name              = "git-${var.image_version}"
   image_family            = "git"
   image_description       = "${var.source_image_family} + Gitea ${var.gitea_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {

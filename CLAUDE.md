@@ -62,7 +62,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
-- Image **names** (`<flavor>-v<version>`) are unique per project: rebuilding an
+- Image **names** (`<flavor>-<version>`) are unique per project: rebuilding an
   existing version hard-fails at image-create (GCE `409 alreadyExists`) and never
   overwrites. Bump `image_version` to publish; the family pointer advances on its
   own. No explicit pre-check is needed — GCE enforces this.
@@ -206,7 +206,7 @@ Naming convention: a flavor named after a tool includes that tool plus its
 prerequisites (so `tomcat` ⇒ Java, no redundant `java-` prefix). Combined
 flavors join the tool names with `-` (`tomcat-mysql`). The image **family** is
 the bare flavor name (e.g. `tomcat`); the tool version lives in the `image_name`
-(`tomcat-v1-0-0`) and in image **labels** — never in the family — so consumers
+(`tomcat-1-0-0`) and in image **labels** — never in the family — so consumers
 track `--image-family=tomcat` without ever chasing minor-version bumps.
 
 Each image runs `install-basics.sh` first, then the additional installer scripts
