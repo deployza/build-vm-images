@@ -8,11 +8,21 @@ apt-get install -y \
     ca-certificates \
     curl \
     dos2unix \
+    dnsutils \
     git \
     gnupg2 \
+    htop \
+    iproute2 \
+    iputils-ping \
+    jq \
     lsb-release \
+    netcat-openbsd \
+    procps \
+    rsync \
     sed \
     software-properties-common \
+    traceroute \
+    tree \
     unzip \
     vim \
     wget \
