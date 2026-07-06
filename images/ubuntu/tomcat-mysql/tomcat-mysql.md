@@ -1,7 +1,8 @@
 # `tomcat-mysql` image
 
 GCE image family **`tomcat-mysql`**: Ubuntu + basic tools + gcloud CLI + JDK +
-Apache Tomcat (systemd) + MySQL Community Server (systemd). App server and
+Apache Tomcat (systemd) + MySQL Server (distro `mysql-server` + `mysql-client`,
+8.0.x, systemd). App server and
 database co-located on one VM — convenient for single-node deployments.
 
 Maven is **not** installed (WARs are built at build time, pulled at boot).
@@ -13,7 +14,8 @@ deploy step provisions credentials and databases.
 - `install-basics.sh` — apt basics + gcloud CLI
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
-- `install-mysql.sh` — MySQL, `mysql` systemd service
+- `install-mysql.sh` — `mysql-server` + `mysql-client` (Ubuntu distro 8.0.x),
+  `mysql` systemd service
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
@@ -34,6 +36,7 @@ Consumers launch with `--image-family=tomcat-mysql --image-project=tools-tech-46
 
 ## Changelog
 
-| Version | Date       | Change                                            |
-| ------- | ---------- | ------------------------------------------------- |
-| 1-0-0   | 2026-06-22 | Initial image. JDK 24, Tomcat 11.0.8, MySQL 8.4.  |
+| Version | Date       | Change                                                         |
+| ------- | ---------- | -------------------------------------------------------------- |
+| 1-0-1   | 2026-07-06 | Switch to Ubuntu distro `mysql-server`+`mysql-client` (8.0).  |
+| 1-0-0   | 2026-06-22 | Initial image. JDK 24, Tomcat 11.0.8, MySQL 8.4.               |

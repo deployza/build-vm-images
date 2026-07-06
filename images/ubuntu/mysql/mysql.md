@@ -1,7 +1,7 @@
 # `mysql` image
 
-GCE image family **`mysql`**: Ubuntu + basic tools + gcloud CLI + MySQL
-Community Server running as a `systemd` service.
+GCE image family **`mysql`**: Ubuntu + basic tools + gcloud CLI + MySQL Server
+(distro `mysql-server` + `mysql-client`, 8.0.x) running as a `systemd` service.
 
 The server is baked with no root password and bound to `127.0.0.1`. The
 boot-time deploy step is responsible for setting the root password / creating
@@ -11,8 +11,8 @@ image.
 ## Contents
 
 - `install-basics.sh` — apt basics + gcloud CLI
-- `install-mysql.sh` — MySQL from the official `dev.mysql.com` apt repo, `mysql`
-  systemd service
+- `install-mysql.sh` — `mysql-server` + `mysql-client` from Ubuntu's own apt
+  repo (distro 8.0.x, not `dev.mysql.com`), `mysql` systemd service
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
@@ -33,6 +33,7 @@ Consumers launch with `--image-family=mysql --image-project=tools-tech-463909`.
 
 ## Changelog
 
-| Version | Date       | Change                          |
-| ------- | ---------- | ------------------------------- |
-| 1-0-0   | 2026-06-22 | Initial image. MySQL 8.4.       |
+| Version | Date       | Change                                                        |
+| ------- | ---------- | ------------------------------------------------------------- |
+| 1-0-1   | 2026-07-06 | Switch to Ubuntu distro `mysql-server`+`mysql-client` (8.0). |
+| 1-0-0   | 2026-06-22 | Initial image. MySQL 8.4.                                     |
