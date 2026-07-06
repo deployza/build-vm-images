@@ -19,6 +19,16 @@
 #   1. Environment variables (e.g. an EnvironmentFile drop-in on the unit).
 #   2. GCE instance metadata attributes (the normal source on a VM).
 #   3. The built-in defaults above.
+#
+# Logs — this script logs via log() to stdout, so its output (and the app
+# script's, since that runs as a child) lands in the systemd journal under the
+# vm-startup.service unit. On the VM:
+#   sudo journalctl -u vm-startup.service        # all output from the unit
+#   sudo journalctl -u vm-startup.service -b      # just this boot
+#   sudo journalctl -u vm-startup.service -f      # follow live
+# Its own lines are prefixed "[vm-startup]". Because it runs at boot, the output
+# also appears in the GCE serial console:
+#   gcloud compute instances get-serial-port-output <instance>
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
