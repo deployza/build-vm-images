@@ -45,7 +45,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > if a version needs to change in both, change both.
 
 > **Current state.** Five flavors are implemented under `images/ubuntu/<flavor>/`,
-> each with an `image.pkr.hcl` + `cloudbuild.yaml` + `README.md`:
+> each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `git` (Gitea). Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -153,19 +153,19 @@ build-vm-images/
       java/
         image.pkr.hcl
         cloudbuild.yaml
-        README.md
+        java.md
       tomcat/
         image.pkr.hcl
         cloudbuild.yaml
-        README.md
+        tomcat.md
       mysql/
         image.pkr.hcl
         cloudbuild.yaml
-        README.md
+        mysql.md
       tomcat-mysql/
         image.pkr.hcl
         cloudbuild.yaml
-        README.md
+        tomcat-mysql.md
 ```
 
 A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
