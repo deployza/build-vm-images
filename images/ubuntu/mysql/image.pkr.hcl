@@ -92,6 +92,7 @@ build {
     inline = [
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-mysql.sh",
+      "bash /tmp/scripts/install-vm-startup.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

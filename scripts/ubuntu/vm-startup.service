@@ -1,0 +1,27 @@
+[Unit]
+Description=Deployza app startup launcher (clone APP_REPO and run <APP_NAME>.sh)
+# Run after the network and (if present) Tomcat are up, so the app script can
+# reach its git remote and deploy into a running container.
+After=network-online.target tomcat.service
+Wants=network-online.target
+
+[Service]
+# One-shot: clone + hand off to the app's own script, then exit. The app script
+# is responsible for anything long-running (it deploys into Tomcat, starts a
+# daemon, etc.).
+Type=oneshot
+RemainAfterExit=yes
+
+# Selects the app repo's vm/<APP_NAME>.sh (vs docker/). Baked in here so the
+# launcher's default is never relied upon.
+Environment=APP_PLATFORM=vm
+
+# Parameters are read from GCE instance metadata by vm-startup.sh itself. To
+# override on a specific VM without touching metadata, drop an env file:
+#   /etc/default/vm-startup  (KEY=VALUE lines: APP_REPO=, APP_NAME=, APP_ENV=)
+EnvironmentFile=-/etc/default/vm-startup
+
+ExecStart=/usr/local/bin/vm-startup.sh
+
+[Install]
+WantedBy=multi-user.target
