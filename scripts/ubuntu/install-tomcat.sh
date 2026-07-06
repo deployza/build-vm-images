@@ -37,20 +37,20 @@ chmod +x $TOMCAT_HOME/bin/*.sh
 # --- Externalized config + log directories (FHS-correct) ----------------------
 # WARs are dropped into Tomcat's default appBase ($TOMCAT_HOME/webapps). Config
 # and logs live OUTSIDE the install tree and are passed to Tomcat as both env
-# vars (CONFIG_DIR/LOG_DIR) and JVM properties (-Dconfig.dir/-Dlog.dir); see
+# vars (CONFIG_DIR/LOGS_DIR) and JVM properties (-Dconfig.dir/-Dlogs.dir); see
 # setenv.sh.
 CONFIG_DIR=/etc/apps
-LOG_DIR=/var/log/apps
+LOGS_DIR=/var/log/apps
 
 # Externalized config + log roots, owned by the service user.
-mkdir -p "$CONFIG_DIR" "$LOG_DIR"
-chown tomcat:tomcat "$CONFIG_DIR" "$LOG_DIR"
-chmod 750 "$CONFIG_DIR" "$LOG_DIR"
+mkdir -p "$CONFIG_DIR" "$LOGS_DIR"
+chown tomcat:tomcat "$CONFIG_DIR" "$LOGS_DIR"
+chmod 750 "$CONFIG_DIR" "$LOGS_DIR"
 
 # Rotate application logs (we are off the distro default path, so ship our own
 # logrotate rule).
 cat > /etc/logrotate.d/tomcat-apps <<EOF
-$LOG_DIR/*.log {
+$LOGS_DIR/*.log {
     daily
     rotate 14
     compress

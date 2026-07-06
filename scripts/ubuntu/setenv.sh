@@ -14,7 +14,7 @@ export CATALINA_HOME=/opt/tomcat
 # so the app can read them via System.getenv("CONFIG_DIR") or
 # System.getProperty("config.dir") — never the JVM working directory.
 export CONFIG_DIR=/etc/apps                 # externalized config directory
-export LOG_DIR=/var/log/apps                # application log directory
+export LOGS_DIR=/var/log/apps               # application log directory
 
 # Calculate 75% of available RAM for Java heap
 # Get total RAM in KB, calculate 75%, convert to MB
@@ -27,5 +27,5 @@ INITIAL_HEAP_MB=$((HEAP_SIZE_MB * 50 / 100))
 # Java options for Tomcat. The -D properties are how the app locates its config
 # and log directories — never the JVM working directory (non-deterministic under
 # systemd).
-export JAVA_OPTS="-server -Xms${INITIAL_HEAP_MB}M -Xmx${HEAP_SIZE_MB}M -Dconfig.dir=$CONFIG_DIR -Dlog.dir=$LOG_DIR"
+export JAVA_OPTS="-server -Xms${INITIAL_HEAP_MB}M -Xmx${HEAP_SIZE_MB}M -Dconfig.dir=$CONFIG_DIR -Dlogs.dir=$LOGS_DIR"
 
