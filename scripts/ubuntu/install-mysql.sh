@@ -24,6 +24,34 @@ apt-get install -y mysql-server mysql-client
 # remote bind is required.
 sed -i 's/^#\?\s*bind-address.*/bind-address = 127.0.0.1/' /etc/mysql/mysql.conf.d/mysqld.cnf || true
 
+# Tighten binary-log retention (server default is 30 days) so binlogs don't
+# accumulate and fill the disk. Written as a config drop-in so it applies from
+# first start without needing a live SQL connection at bake time.
+MYSQL_BINLOG_RETENTION_SECONDS="${MYSQL_BINLOG_RETENTION_SECONDS:-1209600}"   # 14 days
+cat >/etc/mysql/mysql.conf.d/zz-log-retention.cnf <<EOF
+[mysqld]
+binlog_expire_logs_seconds = ${MYSQL_BINLOG_RETENTION_SECONDS}
+EOF
+
+# Rotate MySQL's error/slow log files. This is in addition to the package's own
+# /etc/logrotate.d/mysql; flush-logs makes the server reopen its log handles
+# after rotation.
+cat >/etc/logrotate.d/mysql-custom <<'EOF'
+/var/log/mysql/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        test -x /usr/bin/mysqladmin || exit 0
+        mysqladmin flush-logs >/dev/null 2>&1 || true
+    endscript
+}
+EOF
+
 systemctl daemon-reload
 systemctl enable mysql
 systemctl start mysql
