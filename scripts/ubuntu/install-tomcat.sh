@@ -27,6 +27,17 @@ runuser -l tomcat -c "cd $TOMCAT_HOME && wget -q ${FILES_BASE_URL}/installables/
 runuser -l tomcat -c "cd $TOMCAT_HOME && tar -xzf $TOMCAT_ARCHIVE --strip-components=1"
 runuser -l tomcat -c "cd $TOMCAT_HOME && rm -f $TOMCAT_ARCHIVE"
 
+# Disable Tomcat's per-request access log. The stock conf/server.xml enables an
+# AccessLogValve that writes rotating daily files (localhost_access_log.*.txt) to
+# $TOMCAT_HOME/logs. We turn the access log OFF fleet-wide (matching the nginx/
+# apisix/tomcat docker images) by commenting the valve out of server.xml. Tomcat's
+# other logs are unaffected (juli under $TOMCAT_HOME/logs, app logs under
+# /var/log/apps with the logrotate rule below).
+sed -i '/className="org.apache.catalina.valves.AccessLogValve"/,/\/>/{s/<Valve/<!-- Valve/; s/\/>/\/ -->/}' \
+        $TOMCAT_HOME/conf/server.xml
+! grep -q '<Valve className="org.apache.catalina.valves.AccessLogValve"' $TOMCAT_HOME/conf/server.xml
+chown tomcat:tomcat $TOMCAT_HOME/conf/server.xml
+
 # Copy setenv.sh to Tomcat's bin directory
 cp "$SCRIPT_DIR/setenv.sh" $TOMCAT_HOME/bin/setenv.sh
 chown tomcat:tomcat $TOMCAT_HOME/bin/setenv.sh

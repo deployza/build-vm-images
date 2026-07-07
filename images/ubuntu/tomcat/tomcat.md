@@ -33,6 +33,12 @@ against that (never the JVM working directory). Both roots are created by the
 image, owned `tomcat:tomcat`. Logs under `/var/log/apps/*.log` are rotated by
 `/etc/logrotate.d/tomcat-apps`.
 
+Tomcat's per-request **access log is disabled**: `install-tomcat.sh` comments the
+`AccessLogValve` out of `conf/server.xml`, so no `localhost_access_log.*.txt`
+files are written under `/opt/tomcat/logs` (matching the nginx/apisix/tomcat
+docker images, which also turn the access log off). This applies to the
+`tomcat-mysql` flavor too, since it runs the same installer.
+
 ## Build
 
 Run from the **repo root** (the build context must include `scripts/`):

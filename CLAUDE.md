@@ -79,6 +79,30 @@ These are self-contained — there is no build-time dependency on a sibling repo
   sits in. See `build-design.md` §3 for the commands and rationale.
 - See `build-design.md` §3 in `build-docs` for the full template and rationale.
 
+## Log & disk hygiene (VM-only)
+
+Because these images run services **directly on the VM** (Tomcat/MySQL as
+systemd units), the host owns log and disk management. Two layers:
+
+- **Host-wide, generic** — `scripts/logs-system.sh` (systemd journal retention,
+  core-dump size caps, generic `/opt` logrotate + a logrotate dry-run) and
+  `scripts/logs-disk-tools.sh` (`disk-audit` / `disk-alert` helpers). Set only
+  what differs from the OS defaults.
+- **Per-service** — each installer owns its own log config: Tomcat log rotation
+  in `install-tomcat.sh` (logs live at `/var/log/apps`, not `/opt/tomcat/logs`),
+  MySQL file rotation **and** binlog retention in `install-mysql.sh`. Keep
+  service log config with the service that produces it, not in the `logs-*`
+  scripts. `install-tomcat.sh` also **disables Tomcat's per-request access log**
+  (comments the `AccessLogValve` out of `conf/server.xml`) so no
+  `localhost_access_log.*.txt` files are written — matching the fleet-wide
+  access-log-off decision in the docker images.
+
+**This model is VM-only — do not port it to Docker.** Containers don't get
+in-image logrotate/journald/cron; applications there log to `stdout`/`stderr`
+and the Docker daemon's log driver caps size at the host. See
+`build-docker/CLAUDE.md` → "Logging" for the container stance and why it's the
+deliberate opposite of this.
+
 ## One-time project setup (prerequisites for a successful build)
 
 A Cloud Build run will not succeed until **all** of the following exist in the
