@@ -15,19 +15,20 @@ Environment="JAVA_HOME=/opt/java/latest"
 
 Environment=PROCESS_NAME=tomcat
 
-# Externalized config + log directories. Also exported (and passed as
-# -Dconfig.dir / -Dlogs.dir) by setenv.sh; set here too so they are present in
-# the service environment regardless of how Tomcat is invoked.
-Environment=CONFIG_DIR=/etc/apps
-Environment=LOGS_DIR=/var/log/apps
+# Externalized app config + log directories under the tomcat user's home. Also
+# exported (and passed as -Dconfig.dir / -Dlogs.dir) by setenv.sh; set here too
+# so they are present in the service environment regardless of how Tomcat is
+# invoked.
+Environment=CONFIG_DIR=/home/tomcat/apps/conf
+Environment=LOGS_DIR=/home/tomcat/apps/logs
 
-Environment=CATALINA_HOME=/opt/tomcat
-Environment=CATALINA_BASE=/opt/tomcat
-Environment=CATALINA_PID=/opt/tomcat/tomcat.pid
+Environment=CATALINA_HOME=/home/tomcat/instance
+Environment=CATALINA_BASE=/home/tomcat/instance
+Environment=CATALINA_PID=/home/tomcat/instance/tomcat.pid
 
 # Commands to start and stop the service
-ExecStart=/opt/tomcat/bin/catalina.sh start
-ExecStop=/opt/tomcat/bin/catalina.sh stop
+ExecStart=/home/tomcat/instance/bin/catalina.sh start
+ExecStop=/home/tomcat/instance/bin/catalina.sh stop
 
 # Restart policy
 Restart=always

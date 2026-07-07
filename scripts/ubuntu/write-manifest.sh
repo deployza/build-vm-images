@@ -21,10 +21,10 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
-  if [ -d /opt/tomcat ]; then
+  if [ -d /home/tomcat/instance ]; then
     echo "== tomcat version =="
-    cat /opt/tomcat/RELEASE-NOTES 2>/dev/null | head -n 5 || true
-    /opt/java/latest/bin/java -cp /opt/tomcat/lib/catalina.jar org.apache.catalina.util.ServerInfo 2>/dev/null || true
+    cat /home/tomcat/instance/RELEASE-NOTES 2>/dev/null | head -n 5 || true
+    /opt/java/latest/bin/java -cp /home/tomcat/instance/lib/catalina.jar org.apache.catalina.util.ServerInfo 2>/dev/null || true
     echo
   fi
 

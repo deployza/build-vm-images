@@ -6,15 +6,16 @@
 export JAVA_HOME=/opt/java/latest
 
 # Set CATALINA_HOME and CATALINA_BASE
-export CATALINA_HOME=/opt/tomcat
+export CATALINA_HOME=/home/tomcat/instance
 
-# Externalized application directories (FHS-correct, outside the WAR/install tree).
-# WARs are dropped into the default appBase ($CATALINA_HOME/webapps). Config and
-# logs are exported both as environment variables AND as JVM -D properties below,
-# so the app can read them via System.getenv("CONFIG_DIR") or
-# System.getProperty("config.dir") — never the JVM working directory.
-export CONFIG_DIR=/etc/apps                 # externalized config directory
-export LOGS_DIR=/var/log/apps               # application log directory
+# Externalized application directories under the tomcat user's home (outside the
+# WAR/install tree). WARs are dropped into the default appBase
+# ($CATALINA_HOME/webapps). Config and logs are exported both as environment
+# variables AND as JVM -D properties below, so the app can read them via
+# System.getenv("CONFIG_DIR") or System.getProperty("config.dir") — never the
+# JVM working directory.
+export CONFIG_DIR=/home/tomcat/apps/conf    # externalized app config directory
+export LOGS_DIR=/home/tomcat/apps/logs      # application log directory
 
 # Calculate 75% of available RAM for Java heap
 # Get total RAM in KB, calculate 75%, convert to MB

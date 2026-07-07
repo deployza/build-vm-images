@@ -13,7 +13,8 @@ deploy step provisions credentials and databases.
 
 - `install-basics.sh` — apt basics + gcloud CLI
 - `install-java.sh` — JDK under `/opt/java`
-- `install-tomcat.sh` — Tomcat at `/opt/tomcat`, `tomcat` systemd service
+- `install-tomcat.sh` — `tomcat` user (home `/home/tomcat`), Tomcat at
+  `/home/tomcat/instance`, `tomcat` systemd service
 - `install-mysql.sh` — `mysql-server` + `mysql-client` (Ubuntu distro 8.0.x),
   `mysql` systemd service
 
@@ -38,5 +39,6 @@ Consumers launch with `--image-family=tomcat-mysql --image-project=tools-tech-46
 
 | Version | Date       | Change                                                         |
 | ------- | ---------- | -------------------------------------------------------------- |
+| 1-0-2   | 2026-07-07 | Move Tomcat under the `tomcat` user home: install at `/home/tomcat/instance`, app config `/home/tomcat/apps/conf`, app logs `/home/tomcat/apps/logs`. |
 | 1-0-1   | 2026-07-06 | Switch to Ubuntu distro `mysql-server`+`mysql-client` (8.0).  |
 | 1-0-0   | 2026-06-22 | Initial image. JDK 24, Tomcat 11.0.8, MySQL 8.4.               |
