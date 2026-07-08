@@ -5,7 +5,7 @@ set -euo pipefail
 # OS defaults; only what's needed is set.
 #
 # Note: service-specific log rotation lives with each installer at image build:
-# Tomcat app logs (/home/tomcat/apps/logs) in install-tomcat.sh, MySQL logs (/var/log/mysql)
+# Tomcat app logs (/home/tomcat/instance/logs) in install-tomcat.sh, MySQL logs (/var/log/mysql)
 # and binlog retention in install-mysql.sh.
 
 JOURNAL_MAX_RETENTION="${JOURNAL_MAX_RETENTION:-14day}"

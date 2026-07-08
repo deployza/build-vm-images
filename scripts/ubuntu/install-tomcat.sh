@@ -54,22 +54,24 @@ chown tomcat:tomcat $TOMCAT_HOME/bin/setenv.sh
 chmod +x $TOMCAT_HOME/bin/*.sh
 
 # --- Externalized app config + log directories --------------------------------
-# WARs are dropped into Tomcat's default appBase ($TOMCAT_HOME/webapps). App
-# config and logs live under the tomcat user's home (outside the install tree)
-# and are passed to Tomcat as both env vars (CONFIG_DIR/LOGS_DIR) and JVM
-# properties (-Dconfig.dir/-Dlogs.dir); see setenv.sh.
-CONFIG_DIR=$TOMCAT_USER_HOME/apps/conf
-LOGS_DIR=$TOMCAT_USER_HOME/apps/logs
+# WARs are dropped into Tomcat's default appBase ($TOMCAT_HOME/webapps). Each
+# app's config and logging are no longer resolved from a JVM-wide -Dconfig.dir/
+# -Dlogs.dir (see setenv.sh). Instead the app deploy script (<app>.sh) installs a
+# per-webapp Tomcat context.xml into $TOMCAT_HOME/conf/Catalina/localhost/<app>.xml
+# whose <Parameter> entries point the app at its properties file and log dir. That
+# localhost/ dir already exists (or is created by Tomcat); app logs are written
+# under $TOMCAT_HOME/logs/<app>/ as configured by each app's logback file.
+LOGS_DIR=$TOMCAT_HOME/logs
 
-# App config + log roots, owned by the service user.
-mkdir -p "$CONFIG_DIR" "$LOGS_DIR"
-chown -R tomcat:tomcat "$TOMCAT_USER_HOME/apps"
-chmod 750 "$CONFIG_DIR" "$LOGS_DIR"
+# App log root, owned by the service user. Per-app subdirectories under this are
+# created by the app deploy script / the app's logback config at runtime.
+mkdir -p "$LOGS_DIR"
+chown -R tomcat:tomcat "$LOGS_DIR"
 
-# Rotate application logs (we are off the distro default path, so ship our own
-# logrotate rule).
+# Rotate application logs. Apps log under $TOMCAT_HOME/logs/<app>/*.log, so match
+# both that nested layout and any logs written directly under $LOGS_DIR.
 cat > /etc/logrotate.d/tomcat-apps <<EOF
-$LOGS_DIR/*.log {
+$LOGS_DIR/*/*.log $LOGS_DIR/*.log {
     daily
     rotate 14
     compress
@@ -84,8 +86,11 @@ chmod 644 /etc/logrotate.d/tomcat-apps
 # -----------------------------------------------------------------------------
 
 
-# Copy systemd service file for Tomcat
-cp "$SCRIPT_DIR/tomcat.service" /etc/systemd/system/tomcat.service
+# Install the systemd service file, substituting the @INSTANCE_DIR@ placeholder
+# with $TOMCAT_HOME so the install path lives in exactly one place (this script).
+# $TOMCAT_HOME has no '|' or shell metacharacters, so '|' is a safe sed delimiter.
+sed "s|@INSTANCE_DIR@|$TOMCAT_HOME|g" \
+        "$SCRIPT_DIR/tomcat.service" > /etc/systemd/system/tomcat.service
 
 # Reload systemd and enable/start Tomcat service
 systemctl daemon-reload

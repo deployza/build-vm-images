@@ -1,3 +1,6 @@
+# NOTE: this is a TEMPLATE, not the final unit. install-tomcat.sh substitutes
+# @INSTANCE_DIR@ with $TOMCAT_HOME (the single source for the install path) when
+# it writes /etc/systemd/system/tomcat.service. Do not hardcode the path here.
 [Unit]
 Description=Apache Tomcat Web Application Container
 After=syslog.target network.target
@@ -7,28 +10,33 @@ After=syslog.target network.target
 User=tomcat
 Group=tomcat
 
-# Type of service
+# Type of service. PIDFile lets systemd read the daemon's PID authoritatively
+# (from the same file catalina.sh writes via CATALINA_PID below) instead of
+# guessing the main PID from the process tree.
 Type=forking
+PIDFile=@INSTANCE_DIR@/tomcat.pid
 
 # Environment variables (Optional, but good practice)
 Environment="JAVA_HOME=/opt/java/latest"
 
 Environment=PROCESS_NAME=tomcat
 
-# Externalized app config + log directories under the tomcat user's home. Also
-# exported (and passed as -Dconfig.dir / -Dlogs.dir) by setenv.sh; set here too
-# so they are present in the service environment regardless of how Tomcat is
-# invoked.
-Environment=CONFIG_DIR=/home/tomcat/apps/conf
-Environment=LOGS_DIR=/home/tomcat/apps/logs
+# Config/log locations are resolved per webapp from its context.xml
+# ($CATALINA_HOME/conf/Catalina/localhost/<app>.xml), not from JVM-wide env vars
+# or -D properties — so there is deliberately no CONFIG_DIR/LOGS_DIR here. See
+# setenv.sh and the app deploy script (<app>.sh in build-vm-scripts/vm).
 
-Environment=CATALINA_HOME=/home/tomcat/instance
-Environment=CATALINA_BASE=/home/tomcat/instance
-Environment=CATALINA_PID=/home/tomcat/instance/tomcat.pid
+# CATALINA_HOME / CATALINA_BASE are intentionally not set: ExecStart invokes
+# catalina.sh by absolute path, so it derives CATALINA_HOME from its own bin/
+# location (@INSTANCE_DIR@) and defaults CATALINA_BASE to it. CATALINA_PID
+# below IS required — it tells catalina.sh where to WRITE the daemon's PID file
+# (it creates none on its own); systemd then READS that same file via PIDFile=
+# above to track the process across start/stop/restart. Keep both paths in sync.
+Environment=CATALINA_PID=@INSTANCE_DIR@/tomcat.pid
 
 # Commands to start and stop the service
-ExecStart=/home/tomcat/instance/bin/catalina.sh start
-ExecStop=/home/tomcat/instance/bin/catalina.sh stop
+ExecStart=@INSTANCE_DIR@/bin/catalina.sh start
+ExecStop=@INSTANCE_DIR@/bin/catalina.sh stop
 
 # Restart policy
 Restart=always

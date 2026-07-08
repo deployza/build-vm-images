@@ -24,8 +24,8 @@ installs everything under it:
 | --------------- | -------------------------- |
 | Home            | `/home/tomcat`             |
 | Tomcat install  | `/home/tomcat/instance` (`CATALINA_HOME`) |
-| App config      | `/home/tomcat/apps/conf`   |
-| App logs        | `/home/tomcat/apps/logs`   |
+| Per-webapp config | `/home/tomcat/instance/conf/Catalina/localhost/` |
+| App logs        | `/home/tomcat/instance/logs/<app>/` |
 
 Tomcat installs into the fixed `instance` dir (no version in the path), so a
 Tomcat version bump only changes which archive `versions.env` points at — no
@@ -36,20 +36,19 @@ path in the service, `setenv.sh`, or the deploy script changes.
 Drop WAR files into Tomcat's default appBase, **`/home/tomcat/instance/webapps/`**
 (`autoDeploy` picks them up). `app.war` → context `/app`; `ROOT.war` → root `/`.
 
-App config and logs live under the tomcat user's home (outside the install tree)
-and are passed to Tomcat both as **environment variables** and as **JVM `-D`
-properties**:
+App config is **not** passed via a JVM-wide `-Dconfig.dir` / `-Dlogs.dir` (those
+were removed from `setenv.sh` — a JVM-wide `-D` is shared by every co-hosted
+webapp). Instead each app ships a **per-webapp Tomcat context descriptor** that
+the app's deploy script (`<app>.sh`) installs into
 
-| Purpose | Location     | Env var      | `-D` property |
-| ------- | ------------ | ------------ | ------------- |
-| Config  | `/home/tomcat/apps/conf/` | `CONFIG_DIR` | `config.dir`  |
-| Logs    | `/home/tomcat/apps/logs/` | `LOGS_DIR` | `logs.dir`   |
+    /home/tomcat/instance/conf/Catalina/localhost/<app>.xml
 
-The app reads whichever it prefers — `System.getenv("CONFIG_DIR")` or
-`System.getProperty("config.dir")` — and resolves its properties/log paths
-against that (never the JVM working directory). Both roots are created by the
-image, owned `tomcat:tomcat`. Logs under `/home/tomcat/apps/logs/*.log` are
-rotated by `/etc/logrotate.d/tomcat-apps`.
+Tomcat names the context by the file's basename, so `<app>.xml` → context path
+`/<app>`. Its `<Parameter>` entries point the app at its properties and logback
+files (installed alongside it in the same dir), which the app's
+`ServletContextListener` reads at startup and promotes to system properties.
+App logs are written under **`/home/tomcat/instance/logs/<app>/`** (per the app's
+logback config) and rotated by `/etc/logrotate.d/tomcat-apps`.
 
 Tomcat's per-request **access log is disabled**: `install-tomcat.sh` comments the
 `AccessLogValve` out of `conf/server.xml`, so no `localhost_access_log.*.txt`

@@ -89,8 +89,8 @@ systemd units), the host owns log and disk management. Two layers:
   `scripts/logs-disk-tools.sh` (`disk-audit` / `disk-alert` helpers). Set only
   what differs from the OS defaults.
 - **Per-service** — each installer owns its own log config: Tomcat log rotation
-  in `install-tomcat.sh` (app logs live at `/home/tomcat/apps/logs`, not
-  `/home/tomcat/instance/logs`),
+  in `install-tomcat.sh` (app logs live under `/home/tomcat/instance/logs/<app>/`,
+  written per the app's own logback config),
   MySQL file rotation **and** binlog retention in `install-mysql.sh`. Keep
   service log config with the service that produces it, not in the `logs-*`
   scripts. `install-tomcat.sh` also **disables Tomcat's per-request access log**
