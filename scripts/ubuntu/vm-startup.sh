@@ -47,11 +47,11 @@ log() { echo "[vm-startup] $*"; }
 # comment on each explains where its value comes from.
 
 # --- Fixed in the image -------------------------------------------------------
-# APP_REPO is fixed in the image — every VM clones the standard app-scripts repo.
+# APP_REPO is fixed in the image — every VM clones the standard app-install repo.
 # It is intentionally NOT overridable per-instance. APP_NAME and APP_ENV, by
 # contrast, are REQUIRED and per-instance (see resolve_required) so a misconfigured
 # boot fails loudly instead of deploying a placeholder.
-readonly APP_REPO="https://github.com/deployza/build-vm-scripts.git"
+readonly APP_REPO="https://github.com/deployza/build-app-install.git"
 
 # Platform this launcher runs on: selects which subdir of the app repo holds the
 # app script (repo layout is <repo>/vm/<APP_NAME>.sh and <repo>/docker/<APP_NAME>.sh).
