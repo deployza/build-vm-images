@@ -34,6 +34,12 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  if command -v nginx >/dev/null 2>&1; then
+    echo "== nginx -v =="
+    nginx -v 2>&1 || true
+    echo
+  fi
+
   if command -v gitea >/dev/null 2>&1; then
     echo "== gitea --version =="
     gitea --version 2>&1 || true

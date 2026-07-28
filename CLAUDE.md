@@ -44,9 +44,10 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > not a shared source**. Do not reintroduce a cross-repo "single source" coupling;
 > if a version needs to change in both, change both.
 
-> **Current state.** Five flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Six flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
-> `java`, `tomcat`, `mysql`, `tomcat-mysql`, `git` (Gitea). Shared installers and
+> `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea).
+> Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
 > defaults) inside each flavor's `image.pkr.hcl` — Packer's `validate`/`build`
@@ -91,12 +92,22 @@ systemd units), the host owns log and disk management. Two layers:
 - **Per-service** — each installer owns its own log config: Tomcat log rotation
   in `install-tomcat.sh` (app logs live under `/home/tomcat/instance/logs/<app>/`,
   written per the app's own logback config),
-  MySQL file rotation **and** binlog retention in `install-mysql.sh`. Keep
+  MySQL file rotation **and** binlog retention in `install-mysql.sh`, nginx's
+  `/var/log/nginx/*.log` rotation in `install-nginx.sh`. Keep
   service log config with the service that produces it, not in the `logs-*`
   scripts. `install-tomcat.sh` also **disables Tomcat's per-request access log**
   (comments the `AccessLogValve` out of `conf/server.xml`) so no
   `localhost_access_log.*.txt` files are written — matching the fleet-wide
   access-log-off decision in the docker images.
+
+> **nginx's access log is the one exception, and it is intentional.**
+> `install-nginx.sh` leaves `access_log` **on** and rotates it, where
+> `build-docker/nginx` turns it off. The docker rule exists because a container
+> has no logrotate and an unbounded file lands on the overlay layer; on a VM that
+> premise is false — logrotate is present and the disk is the host's. nginx is
+> also the edge here, so its access log is the only record of who reached the VM.
+> Tomcat's access log stays off because nginx now produces the same information
+> one hop earlier; keeping both would log every request twice.
 
 **This model is VM-only — do not port it to Docker.** Containers don't get
 in-image logrotate/journald/cron; applications there log to `stdout`/`stderr`
@@ -168,6 +179,7 @@ build-vm-images/
       install-basics.sh
       install-java.sh
       install-tomcat.sh
+      install-nginx.sh
       install-mysql.sh
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
       versions.env            # single source for pinned versions
@@ -191,6 +203,10 @@ build-vm-images/
         image.pkr.hcl
         cloudbuild.yaml
         tomcat-mysql.md
+      tomcat-nginx-mysql/
+        image.pkr.hcl
+        cloudbuild.yaml
+        tomcat-nginx-mysql.md
 ```
 
 A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
@@ -226,6 +242,16 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `tomcat` (family `tomcat`): basic tools + Java + Tomcat (the primary flavor).
 - `mysql` (family `mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
+- `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
+  port 80 reverse-proxying Tomcat at `127.0.0.1:8080`.
+
+**nginx is the fleet's HTTP server — do not add Apache HTTPD.** The sibling
+`build-docker` repo already ships an `nginx` image, and one web server across
+both halves of the platform means one config dialect to know. The workload is
+reverse-proxying Tomcat, where HTTPD's advantages (`mod_php`, `.htaccess`) do not
+apply. As with the other installers, the docker and VM copies of the nginx
+install step are deliberately **independent** — the shared decision is the
+software, not the source.
 
 Naming convention: a flavor named after a tool includes that tool plus its
 prerequisites (so `tomcat` ⇒ Java, no redundant `java-` prefix). Combined
