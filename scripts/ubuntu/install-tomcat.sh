@@ -35,16 +35,26 @@ runuser -l tomcat -c "cd $TOMCAT_HOME && wget -q ${FILES_BASE_URL}/installables/
 runuser -l tomcat -c "cd $TOMCAT_HOME && tar -xzf $TOMCAT_ARCHIVE --strip-components=1"
 runuser -l tomcat -c "cd $TOMCAT_HOME && rm -f $TOMCAT_ARCHIVE"
 
-# Disable Tomcat's per-request access log. The stock conf/server.xml enables an
-# AccessLogValve that writes rotating daily files (localhost_access_log.*.txt) to
-# $TOMCAT_HOME/logs. We turn the access log OFF fleet-wide (matching the nginx/
-# apisix/tomcat docker images) by commenting the valve out of server.xml. Tomcat's
-# other logs are unaffected (juli under $TOMCAT_HOME/logs, app logs under
-# $LOGS_DIR with the logrotate rule below).
-sed -i '/className="org.apache.catalina.valves.AccessLogValve"/,/\/>/{s/<Valve/<!-- Valve/; s/\/>/\/ -->/}' \
-        $TOMCAT_HOME/conf/server.xml
-! grep -q '<Valve className="org.apache.catalina.valves.AccessLogValve"' $TOMCAT_HOME/conf/server.xml
-chown tomcat:tomcat $TOMCAT_HOME/conf/server.xml
+# Install the repo-owned conf/server.xml over the one from the tarball.
+#
+# This file is upstream's Tomcat 11.0.8 server.xml with two deliberate changes:
+# the per-request AccessLogValve is REMOVED (it wrote uncapped
+# localhost_access_log.*.txt files; the access log is off fleet-wide, matching
+# the docker images), and a RemoteIpValve is present but COMMENTED OUT for
+# install-nginx.sh to enable on proxied flavors only.
+#
+# Shipping the whole file rather than sed-ing the tarball's copy keeps the
+# configuration readable and diffable in review, instead of inferred from a
+# regex that could silently produce malformed XML — which would fail at VM boot
+# rather than at bake time. See the header comment in server.xml for the
+# Tomcat-upgrade procedure.
+install -o tomcat -g tomcat -m 640 \
+        "$SCRIPT_DIR/server.xml" $TOMCAT_HOME/conf/server.xml
+
+# Assert both intended states landed, so a bad edit to the shipped file fails the
+# bake here rather than surfacing as an unbounded log or a wrong client IP later.
+! grep -q '^[[:space:]]*<Valve className="org.apache.catalina.valves.AccessLogValve"' $TOMCAT_HOME/conf/server.xml
+grep -q 'DEPLOYZA-REMOTEIP-BEGIN' $TOMCAT_HOME/conf/server.xml
 
 # Copy setenv.sh to Tomcat's bin directory
 cp "$SCRIPT_DIR/setenv.sh" $TOMCAT_HOME/bin/setenv.sh

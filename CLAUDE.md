@@ -35,8 +35,9 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > divergence (SELinux, firewalld, repo RPMs, dnf, package names) is large.
 
 > **Self-contained installers.** The installers (`install-basics.sh`,
-> `install-java.sh`, `install-tomcat.sh`, `install-mysql.sh`, `write-manifest.sh`,
-> `versions.env`, `setenv.sh`, `tomcat.service`) live under `scripts/<os>/`.
+> `install-java.sh`, `install-tomcat.sh`, `install-nginx.sh`, `install-mysql.sh`,
+> `write-manifest.sh`, `versions.env`, `setenv.sh`, `server.xml`,
+> `tomcat.service`) live under `scripts/<os>/`.
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
@@ -95,8 +96,8 @@ systemd units), the host owns log and disk management. Two layers:
   MySQL file rotation **and** binlog retention in `install-mysql.sh`, nginx's
   `/var/log/nginx/*.log` rotation in `install-nginx.sh`. Keep
   service log config with the service that produces it, not in the `logs-*`
-  scripts. `install-tomcat.sh` also **disables Tomcat's per-request access log**
-  (comments the `AccessLogValve` out of `conf/server.xml`) so no
+  scripts. Tomcat's per-request access log is **off**: the repo-owned
+  `scripts/ubuntu/server.xml` simply omits upstream's `AccessLogValve`, so no
   `localhost_access_log.*.txt` files are written — matching the fleet-wide
   access-log-off decision in the docker images.
 
@@ -184,6 +185,7 @@ build-vm-images/
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
       versions.env            # single source for pinned versions
       setenv.sh
+      server.xml              # repo-owned Tomcat conf/server.xml (see below)
       tomcat.service
   images/
     ubuntu/
@@ -243,7 +245,28 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `mysql` (family `mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
 - `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
-  port 80 reverse-proxying Tomcat at `127.0.0.1:8080`.
+  port 80, able to serve static content and proxy to Tomcat at
+  `127.0.0.1:8080`. **The routing between the two is not baked** — the image
+  ships an empty `/etc/nginx/app.d/` that the app deploy script writes into, the
+  same way MySQL is baked without credentials. Do not add app-specific
+  `location` blocks to `install-nginx.sh`.
+
+> **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/server.xml`
+> is upstream's file with two deliberate changes (no `AccessLogValve`; a
+> `RemoteIpValve` present but commented out), installed verbatim by
+> `install-tomcat.sh`. Change configuration by editing that file, **never** by
+> adding a `sed`/`awk` patch to an installer: a range-based regex on XML can
+> silently emit malformed output, which fails at VM boot rather than at bake time.
+> On a Tomcat bump, diff it against the new release's `conf/server.xml` (the
+> procedure is in the file's own header).
+>
+> **Only `install-nginx.sh` enables the `RemoteIpValve`** (by deleting the
+> `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines). It tells Tomcat to trust
+> `X-Forwarded-*`, which is only safe where a proxy is the sole path to the
+> connector. Enabling it on the `tomcat` / `tomcat-mysql` flavors, where Tomcat is
+> the front door, would let any client that reaches `:8080` forge its client IP
+> and claim `X-Forwarded-Proto: https`. Keep `internalProxies` at loopback only;
+> Tomcat's RFC1918 default would trust the whole VPC.
 
 **nginx is the fleet's HTTP server — do not add Apache HTTPD.** The sibling
 `build-docker` repo already ships an `nginx` image, and one web server across
