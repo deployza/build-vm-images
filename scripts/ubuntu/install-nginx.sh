@@ -224,9 +224,17 @@ fi
 # but this drop-in pins the retention to the same 14-day/compressed policy the
 # tomcat and mysql installers use, so all three services age out together.
 # USR1 makes the master reopen its log files after rotation.
+#
+# `size 100M` alongside `daily` is an OR, not an AND: logrotate rotates on
+# whichever trips first. Without it, a traffic burst or a scanner hammering :80
+# grows a single day's access.log unbounded until the next daily run. Note this
+# only bounds the file at the moments logrotate actually runs — stock
+# logrotate.timer fires once a day, so a same-day spike is capped at retention
+# time, not in flight. Raising the timer frequency is what would close that gap.
 cat >/etc/logrotate.d/nginx-custom <<'EOF'
 /var/log/nginx/*.log {
     daily
+    size 100M
     rotate 14
     compress
     delaycompress
