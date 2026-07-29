@@ -158,66 +158,17 @@ With this dir empty, every path except /nginx-health returns 404.
 EOF
 # -----------------------------------------------------------------------------
 
-# --- Tell Tomcat to trust this proxy (enable the RemoteIpValve) ---------------
-# nginx reaches Tomcat over loopback, so without a RemoteIpValve every request
-# looks like it came from 127.0.0.1 over plain http: request.getRemoteAddr()
-# returns loopback (corrupting audit logs and defeating IP-based rate limiting or
-# allowlists) and request.isSecure() stays false even once TLS terminates at
-# nginx. The valve rewrites both from the X-Forwarded-* headers the proxy snippet
-# sets.
+# --- Tomcat's RemoteIpValve is NOT enabled here -------------------------------
+# Telling Tomcat to trust this proxy's X-Forwarded-* headers is a separate step,
+# in scripts/ubuntu/nginx-tomcat.sh, invoked as its own line in each flavor's
+# image.pkr.hcl AFTER this installer. See that script for the rationale (why it
+# belongs to the nginx side rather than install-tomcat.sh, and why
+# internalProxies stays at loopback only).
 #
-# This lives in the NGINX installer, not install-tomcat.sh, on purpose: the valve
-# makes Tomcat BELIEVE forwarded headers, which is only safe because nginx is the
-# sole path to the connector. On the plain `tomcat` / `tomcat-mysql` flavors
-# Tomcat IS the front door, so enabling it there would let any client that
-# reaches :8080 forge its own client IP and claim X-Forwarded-Proto: https. The
-# component that creates the trust relationship configures the trust.
-#
-# internalProxies is deliberately ONLY loopback — narrower than Tomcat's default
-# (all RFC1918), which on a GCP VM would trust the entire VPC rather than just
-# local nginx.
-#
-# The valve is NOT inserted here — it is already present in the repo-owned
-# scripts/ubuntu/server.xml that install-tomcat.sh installs, wrapped in an XML
-# comment between DEPLOYZA-REMOTEIP-BEGIN/END markers. This installer only
-# UNCOMMENTS it, by deleting the two marker lines that form the comment.
-#
-# That keeps the valve's XML in the config file where it is readable and
-# reviewable, and reduces this step to removing two lines — no XML generation,
-# no escaping, and nothing that can produce malformed output.
-#
-# Idempotent: the markers are gone after the first run, so a re-run finds
-# nothing to do.
-TOMCAT_SERVER_XML=/home/tomcat/instance/conf/server.xml
-
-if [ ! -f "$TOMCAT_SERVER_XML" ]; then
-  echo "ERROR: $TOMCAT_SERVER_XML not found — install-nginx.sh must run AFTER install-tomcat.sh." >&2
-  exit 1
-fi
-
-if grep -q 'DEPLOYZA-REMOTEIP-BEGIN' "$TOMCAT_SERVER_XML"; then
-  # Delete the comment-open marker line and the comment-close marker line. What
-  # sat between them — the <Valve> element — becomes live XML.
-  sed -i \
-    -e '/<!-- DEPLOYZA-REMOTEIP-BEGIN$/d' \
-    -e '/^[[:space:]]*DEPLOYZA-REMOTEIP-END -->$/d' \
-    "$TOMCAT_SERVER_XML"
-
-  # Verify: the valve must now be live (not inside a comment) and both markers
-  # gone. A half-applied edit would leave server.xml malformed and Tomcat would
-  # fail to start at first boot rather than here.
-  grep -q '^[[:space:]]*<Valve className="org.apache.catalina.valves.RemoteIpValve"' "$TOMCAT_SERVER_XML"
-  ! grep -q 'DEPLOYZA-REMOTEIP' "$TOMCAT_SERVER_XML"
-
-  chown tomcat:tomcat "$TOMCAT_SERVER_XML"
-
-  # Tomcat is already running (install-tomcat.sh started it); restart so the
-  # valve takes effect in the baked image rather than only after first boot.
-  systemctl restart tomcat
-  echo "RemoteIpValve enabled in server.xml (nginx is the trusted proxy)."
-else
-  echo "No DEPLOYZA-REMOTEIP markers in server.xml — valve already enabled or file customised; leaving as is."
-fi
+# It is deliberately not called from here: on the tomcat-nginx-mysql flavor the
+# valve is required, but keeping it a distinct provisioner line means a flavor
+# that fronts Tomcat differently can install nginx without granting that trust,
+# and the step can be re-run on a live VM on its own.
 # -----------------------------------------------------------------------------
 
 # Rotate nginx's own logs. The nginx.org package ships /etc/logrotate.d/nginx,

@@ -31,7 +31,8 @@
        See ../../CLAUDE.md -> "Log & disk hygiene (VM-only)".
 
     2. A RemoteIpValve is ADDED, COMMENTED OUT by default.
-       install-nginx.sh uncomments it — and ONLY that installer does, because
+       nginx-tomcat.sh uncomments it — and ONLY that script does, run as its
+       own provisioner step by the proxied flavors' image.pkr.hcl, because
        the valve makes Tomcat trust X-Forwarded-* headers, which is safe only
        when a proxy is the sole path to the connector. On the plain `tomcat`
        and `tomcat-mysql` flavors Tomcat IS the front door, so a live valve
@@ -187,7 +188,7 @@
              ../../CLAUDE.md -> "Log & disk hygiene (VM-only)". -->
 
         <!-- DEPLOYZA (2): RemoteIpValve, DISABLED by default.
-             install-nginx.sh uncomments this block (and only that installer
+             nginx-tomcat.sh uncomments this block (and only that script
              does). It rewrites request.getRemoteAddr() and request.isSecure()
              from the X-Forwarded-* headers nginx sets, so the application sees
              the real client IP and the real scheme instead of 127.0.0.1/http.
@@ -200,7 +201,7 @@
              valve on a directly-exposed connector lets a client forge its own
              X-Forwarded-For and claim X-Forwarded-Proto: https.
 
-             The exact marker lines below are matched by install-nginx.sh —
+             The exact marker lines below are matched by nginx-tomcat.sh —
              do not reformat them without updating that script. -->
         <!-- DEPLOYZA-REMOTEIP-BEGIN
         <Valve className="org.apache.catalina.valves.RemoteIpValve"

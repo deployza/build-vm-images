@@ -181,6 +181,7 @@ build-vm-images/
       install-java.sh
       install-tomcat.sh
       install-nginx.sh
+      nginx-tomcat.sh         # enables Tomcat's RemoteIpValve; its own provisioner step
       install-mysql.sh
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
       versions.env            # single source for pinned versions
@@ -260,8 +261,12 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 > On a Tomcat bump, diff it against the new release's `conf/server.xml` (the
 > procedure is in the file's own header).
 >
-> **Only `install-nginx.sh` enables the `RemoteIpValve`** (by deleting the
-> `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines). It tells Tomcat to trust
+> **Only `scripts/ubuntu/nginx-tomcat.sh` enables the `RemoteIpValve`** (by
+> deleting the `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines). It is a **separate
+> provisioner line** in a flavor's `image.pkr.hcl`, run after `install-nginx.sh`
+> — `install-nginx.sh` does not call it, so granting this trust stays an explicit
+> per-flavor choice. Only `tomcat-nginx-mysql` includes the line; it is also
+> runnable standalone on a live VM. It tells Tomcat to trust
 > `X-Forwarded-*`, which is only safe where a proxy is the sole path to the
 > connector. Enabling it on the `tomcat` / `tomcat-mysql` flavors, where Tomcat is
 > the front door, would let any client that reaches `:8080` forge its client IP

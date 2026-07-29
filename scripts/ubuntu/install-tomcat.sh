@@ -41,7 +41,7 @@ runuser -l tomcat -c "cd $TOMCAT_HOME && rm -f $TOMCAT_ARCHIVE"
 # the per-request AccessLogValve is REMOVED (it wrote uncapped
 # localhost_access_log.*.txt files; the access log is off fleet-wide, matching
 # the docker images), and a RemoteIpValve is present but COMMENTED OUT for
-# install-nginx.sh to enable on proxied flavors only.
+# nginx-tomcat.sh to enable on proxied flavors only.
 #
 # Shipping the whole file rather than sed-ing the tarball's copy keeps the
 # configuration readable and diffable in review, instead of inferred from a

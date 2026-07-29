@@ -35,6 +35,9 @@ buffer pool already compete for RAM.
 - `install-nginx.sh` — nginx from the official nginx.org stable apt repo,
   `nginx` systemd service, reverse-proxy config at
   `/etc/nginx/conf.d/tomcat.conf`
+- `nginx-tomcat.sh` — enables Tomcat's `RemoteIpValve` so it trusts nginx's
+  `X-Forwarded-*` headers. A separate provisioner step run after
+  `install-nginx.sh`, not called by it, so only proxied flavors grant that trust
 - `install-mysql.sh` — `mysql-server` + `mysql-client` (Ubuntu distro 8.0.x),
   `mysql` systemd service
 
@@ -106,7 +109,9 @@ time — neither is baked into the image.
 Tomcat's `conf/server.xml` is **owned by this repo**
 ([`scripts/ubuntu/server.xml`](../../../scripts/ubuntu/server.xml)) and installed
 verbatim by `install-tomcat.sh`. It ships the `RemoteIpValve` **commented out**;
-`install-nginx.sh` enables it by deleting the two
+[`scripts/ubuntu/nginx-tomcat.sh`](../../../scripts/ubuntu/nginx-tomcat.sh) — a
+separate provisioner step in this flavor's `image.pkr.hcl`, run after
+`install-nginx.sh` — enables it by deleting the two
 `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines that form the comment:
 
 ```xml

@@ -108,6 +108,14 @@ build {
   # 127.0.0.1:8080 and the installer runs `nginx -t` to fail the bake on a bad
   # config. nginx does not need Tomcat running to validate, but keeping the app
   # server first matches the read order of the resulting stack.
+  #
+  # nginx-tomcat.sh is a SEPARATE line, not called from install-nginx.sh: it
+  # enables Tomcat's RemoteIpValve, i.e. tells Tomcat to believe the X-Forwarded-*
+  # headers nginx sets. That is only safe on a flavor where nginx is the sole path
+  # to the :8080 connector, so it stays an explicit per-flavor decision — the
+  # plain `tomcat` / `tomcat-mysql` flavors must NOT add this line. It must run
+  # after install-tomcat.sh (it edits Tomcat's server.xml) and is placed after
+  # install-nginx.sh so the trust is granted only once the proxy exists.
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
@@ -119,6 +127,7 @@ build {
       "bash /tmp/scripts/install-java.sh",
       "bash /tmp/scripts/install-tomcat.sh",
       "bash /tmp/scripts/install-nginx.sh",
+      "bash /tmp/scripts/nginx-tomcat.sh",
       "bash /tmp/scripts/install-mysql.sh",
       "bash /tmp/scripts/install-vm-startup.sh",
       "bash /tmp/scripts/write-manifest.sh",
