@@ -1,0 +1,33 @@
+#!/bin/bash
+# graphify-log-failure — write one ERROR entry to Cloud Logging when a refresh
+# run fails. OnFailure= target of graphify-refresh.service.
+#
+# WHY THIS EXISTS. The TCP health check on :8080 proves the port is open, not
+# that the graph loaded or that it is current — a server happily serving a
+# three-week-old graph looks perfectly healthy. The refresh failing is therefore
+# the signal that actually matters, and the most likely cause is mundane: GitHub
+# caps fine-grained PATs at one year, and when ours lapses every run starts
+# failing while the service keeps answering with a frozen graph.
+#
+# The Ops Agent is deliberately NOT installed on this VM (it would spend memory
+# that the 1 GB e2-micro budget does not have to spare), so journald does not
+# reach Cloud Logging on its own. This writes the one entry that matters directly
+# through the Logging API instead, using the VM service account's
+# roles/logging.logWriter.
+#
+# TO ALERT ON IT: create a log-based alerting policy in Cloud Monitoring for
+#   logName="projects/<project>/logs/graphify-refresh" AND severity>=ERROR
+# That policy is not codified in Terraform yet — see the open items in
+# build-terraform/builds/mcp-tracker.md.
+set -euo pipefail
+
+project="$(curl -fsS --max-time 5 -H 'Metadata-Flavor: Google' \
+    http://metadata.google.internal/computeMetadata/v1/project/project-id)"
+
+instance="$(curl -fsS --max-time 5 -H 'Metadata-Flavor: Google' \
+    http://metadata.google.internal/computeMetadata/v1/instance/name)"
+
+gcloud logging write graphify-refresh \
+    "graphify-refresh.service FAILED on ${instance}. The knowledge graph is now going stale. Check: journalctl -u graphify-refresh.service -n 100. Most likely cause: the read-only GitHub PAT in Secret Manager (graphify-github-pat) has expired." \
+    --severity=ERROR \
+    --project="$project"

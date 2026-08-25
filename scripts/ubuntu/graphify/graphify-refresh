@@ -1,0 +1,202 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+# graphify-refresh — bring the code knowledge graph up to date.
+#
+# Baked to /usr/local/bin/graphify-refresh; ExecStart of graphify-refresh.service,
+# fired hourly by graphify-refresh.timer.
+#
+# Hourly is affordable only because of two gates that make the common case a
+# no-op:
+#
+#   Gate 1 — ASK GITHUB BEFORE FETCHING ANYTHING. One API call lists the org's
+#            repos sorted by pushed_at; only repos pushed since the last
+#            successful run are fetched and rescanned. Without this, every run
+#            costs ~200 `git fetch` round trips — minutes of wall time and burst
+#            credit on a shared-core e2-micro. With it, a quiet hour costs one
+#            API call and nothing else.
+#
+#   Gate 2 — RESTART ONLY IF THE GRAPH ACTUALLY CHANGED. The server reads the
+#            graph into memory at startup and holds it, so a restart is the only
+#            way to pick up a new one — and it costs ~2 s of 503. That is the one
+#            user-visible cost of a refresh; there is no reason to pay it when
+#            nothing moved.
+#
+# A third gate comes free from upstream: `global add` short-circuits on an
+# unchanged source_hash BEFORE loading the global graph, so even a repo that was
+# fetched but whose graph is byte-identical costs a manifest read and one sha256,
+# not the load-merge-rewrite cycle.
+#
+# Logs land in the journal under the unit:
+#   sudo journalctl -u graphify-refresh.service -f
+#
+# NO `set -x`. This script holds the GitHub PAT in its environment, and a traced
+# line would copy it into the journal. See gcp-secret.
+# -----------------------------------------------------------------------------
+set -euo pipefail
+
+source /etc/graphify/graphify.env
+
+log() { echo "[graphify-refresh] $*"; }
+
+# =============================================================================
+# Functions
+# =============================================================================
+
+# gh_api <url>: one authenticated GitHub REST call, body to stdout.
+gh_api() {
+    curl -fsS --max-time 30 \
+        -H "Authorization: Bearer ${GITHUB_PAT}" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "$1"
+}
+
+# changed_repos: print the names of repos pushed since $SINCE, one per line.
+#
+# Results are requested sorted by pushed_at DESCENDING, which is what makes the
+# early exit sound: once the oldest entry on a page is at or below the watermark,
+# every later page is older still and cannot contain a changed repo. In the
+# steady state that means exactly one API call per run.
+#
+# An empty $SINCE (first run, or the state file was cleared) selects everything.
+changed_repos() {
+    local page=1 body count oldest
+
+    while :; do
+        body="$(gh_api "https://api.github.com/orgs/${GRAPHIFY_GITHUB_ORG}/repos?per_page=100&page=${page}&sort=pushed&direction=desc")"
+        count="$(jq 'length' <<<"$body")"
+        [[ "$count" -eq 0 ]] && break
+
+        # pushed_at is ISO 8601 UTC with a fixed width, so a lexical comparison
+        # is a chronological one. Archived and disabled repos are skipped: they
+        # cannot change again, so indexing them is pure cost.
+        jq -r --arg since "$SINCE" '
+            .[]
+            | select(.archived | not)
+            | select(.disabled | not)
+            | select($since == "" or .pushed_at > $since)
+            | .name
+        ' <<<"$body"
+
+        oldest="$(jq -r '.[-1].pushed_at' <<<"$body")"
+        if [[ -n "$SINCE" && ! "$oldest" > "$SINCE" ]]; then
+            break
+        fi
+        [[ "$count" -lt 100 ]] && break
+        page=$((page + 1))
+    done
+}
+
+# exclude_filter: drop the repos named in GRAPHIFY_EXCLUDE_REPOS.
+# grep exits 1 when it emits nothing, which is a normal outcome here, so the
+# status is swallowed rather than tripping `set -e`.
+exclude_filter() {
+    if [[ -z "${GRAPHIFY_EXCLUDE_REPOS// /}" ]]; then
+        cat
+    else
+        grep -vxF -f <(printf '%s\n' $GRAPHIFY_EXCLUDE_REPOS) || true
+    fi
+}
+
+# sync_repo <name>: shallow-clone on first sight, otherwise fast-forward to the
+# remote head. Kept at depth 1 throughout — graphify parses the working tree, so
+# history is dead weight across ~200 repos.
+sync_repo() {
+    local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
+
+    if [[ -d "${dir}/.git" ]]; then
+        git -C "$dir" fetch --depth 1 origin HEAD
+        git -C "$dir" reset --hard FETCH_HEAD
+        # Clear anything left over from a previous scan, but KEEP graphify-out/:
+        # upstream writes it INTO the scanned repo, not into the working
+        # directory, and the next step reads graph.json back out of it.
+        git -C "$dir" clean -fdx -e graphify-out
+    else
+        git clone --depth 1 \
+            "https://github.com/${GRAPHIFY_GITHUB_ORG}/${repo}.git" "$dir"
+    fi
+}
+
+# scan_repo <name>: parse the tree and merge the result into the global graph.
+#
+# --code-only is not an optimisation, it is what keeps this run free and offline.
+# graphify classifies Markdown as a *document*, and documents go through
+# LLM-based semantic extraction: without it a scan HARD-FAILS with "no LLM API
+# key found". --code-only skips documents deliberately instead of failing on
+# them, and everything left is tree-sitter AST parsing — deterministic, no
+# network, no per-token bill.
+scan_repo() {
+    local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
+
+    "$GRAPHIFY_VENV/bin/graphify" extract "$dir" --code-only
+    "$GRAPHIFY_VENV/bin/graphify" global add "${dir}/graphify-out/graph.json" --as "$repo"
+}
+
+# graph_digest: sha256 of the global graph, or empty if it does not exist yet.
+graph_digest() {
+    [[ -f "$GRAPHIFY_GRAPH" ]] && sha256sum "$GRAPHIFY_GRAPH" | cut -d' ' -f1 || true
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+main() {
+    # Stamped BEFORE the API call, not after the run: anything pushed while this
+    # run is in flight must be picked up by the next one, not skipped.
+    local run_started before after
+    run_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    SINCE=""
+    [[ -f "$GRAPHIFY_STATE" ]] && SINCE="$(cat "$GRAPHIFY_STATE")"
+    log "watermark: ${SINCE:-<none> (first run — every repo will be indexed)}"
+
+    # Into process memory, never to disk. GIT_ASKPASS keeps it out of argv and
+    # out of each clone's .git/config; GIT_TERMINAL_PROMPT=0 makes an auth failure
+    # an immediate error instead of a hung prompt on a headless box.
+    GITHUB_PAT="$(/usr/local/bin/gcp-secret "$GRAPHIFY_GITHUB_PAT_SECRET")"
+    export GITHUB_PAT
+    export GIT_ASKPASS=/usr/local/bin/graphify-git-askpass
+    export GIT_TERMINAL_PROMPT=0
+
+    # ---- Gate 1 ----------------------------------------------------------
+    local changed=()
+    mapfile -t changed < <(changed_repos | exclude_filter)
+
+    if [[ ${#changed[@]} -eq 0 ]]; then
+        log "no repos pushed since the watermark — no fetch, no scan, no restart"
+        echo "$run_started" > "$GRAPHIFY_STATE"
+        return 0
+    fi
+
+    log "${#changed[@]} repo(s) to refresh: ${changed[*]}"
+    before="$(graph_digest)"
+
+    mkdir -p "$GRAPHIFY_REPOS"
+    local repo
+    for repo in "${changed[@]}"; do
+        log "--- ${repo}"
+        sync_repo "$repo"
+        scan_repo "$repo"
+    done
+
+    # Only reached if every repo above succeeded — `set -e` aborts the run
+    # otherwise, leaving the watermark untouched so the next run retries the same
+    # set rather than silently skipping past a failure.
+    echo "$run_started" > "$GRAPHIFY_STATE"
+
+    # ---- Gate 2 ----------------------------------------------------------
+    after="$(graph_digest)"
+    if [[ "$after" == "$before" ]]; then
+        log "global graph unchanged — skipping restart"
+        return 0
+    fi
+
+    # The restart happens ONCE, here, after the loop — never per repo. Needs root,
+    # which this unit does not run as; /etc/sudoers.d/graphify permits exactly
+    # this one command and nothing else.
+    log "global graph changed — restarting the MCP server (~2 s of 503)"
+    sudo -n /usr/bin/systemctl restart graphify-mcp.service
+    log "done"
+}
+
+main "$@"

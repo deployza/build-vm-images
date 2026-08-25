@@ -1,0 +1,29 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _IMAGE_VERSION: '1-0'
+
+steps:
+  - name: 'hashicorp/packer'
+    args: ['init', 'images/ubuntu/graphify/image.pkr.hcl']
+
+  # versions.env (the installers' single source of truth) is sourced here and the
+  # pinned versions passed as -var, because packer's file() can't read it from the
+  # template (it lives in a sibling dir, above the template's path.root). Override
+  # the image entrypoint to sh so we can source the file before invoking packer.
+  # $$VAR escapes a shell var from Cloud Build's own ${...} substitution.
+  - name: 'hashicorp/packer'
+    entrypoint: 'sh'
+    args:
+      - -c
+      - |
+        set -e
+        . /workspace/scripts/ubuntu/versions.env
+        for cmd in validate build; do
+          packer $$cmd \
+            -var=image_version=${_IMAGE_VERSION} \
+            -var=git_sha=${COMMIT_SHA} \
+            -var=graphify_version=$$GRAPHIFY_VERSION \
+            images/ubuntu/graphify/image.pkr.hcl
+        done
