@@ -22,6 +22,19 @@ EnvironmentFile=/etc/graphify/graphify.env
 # than inherited.
 Environment=HOME=/data/graphify
 
+# gcloud WRITES to its config directory — a credentials cache and a log file —
+# and defaults it to $HOME/.config/gcloud. With HOME on the read-only /data below,
+# `gcp-secret` died on every start:
+#
+#   ERROR: (gcloud.secrets.versions.access) Unable to create private file
+#   [/data/graphify/.config/gcloud/credentials.db]: [Errno 30] Read-only file system
+#
+# Pointing it at /tmp fixes that without loosening the sandbox: PrivateTmp=true
+# gives this unit its own tmpfs, so the cached token lives in memory, is invisible
+# to every other process, and is destroyed on restart. Better than a real
+# directory, not a concession.
+Environment=CLOUDSDK_CONFIG=/tmp/gcloud
+
 ExecStart=/usr/local/bin/graphify-serve
 
 # On a fresh VM there is no graph yet and this exits immediately. That is the
