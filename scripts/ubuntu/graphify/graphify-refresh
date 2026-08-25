@@ -125,11 +125,35 @@ sync_repo() {
 # key found". --code-only skips documents deliberately instead of failing on
 # them, and everything left is tree-sitter AST parsing — deterministic, no
 # network, no per-token bill.
+#
+# A REPO THAT CANNOT BE INDEXED IS NORMAL, NOT AN ERROR. `graphify extract` exits
+# NON-ZERO when a repo yields an empty graph:
+#
+#   [graphify extract] graph is empty — extraction produced no nodes.
+#   [graphify extract] found 0 code, 0 docs, 0 papers, 0 images
+#
+# That is the expected outcome for a static-UI repo (no HTML or CSS grammar
+# exists, even under [all]), a config-only repo, or an empty one. Under
+# `set -e` a single such repo aborted the whole run — which is exactly what
+# happened to `billing-ui`, killing the refresh for every other repo, hourly,
+# indefinitely. Skip it and keep going; the failure is per-repo, never per-run.
 scan_repo() {
     local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
+    local graph="${dir}/graphify-out/graph.json"
 
-    "$GRAPHIFY_VENV/bin/graphify" extract "$dir" --code-only
-    "$GRAPHIFY_VENV/bin/graphify" global add "${dir}/graphify-out/graph.json" --as "$repo"
+    if ! "$GRAPHIFY_VENV/bin/graphify" extract "$dir" --code-only; then
+        log "  ${repo}: extract produced no usable graph — skipped"
+        return 0
+    fi
+
+    # Belt and braces: a zero exit with no graph file would otherwise make
+    # `global add` the thing that fails.
+    if [[ ! -s "$graph" ]]; then
+        log "  ${repo}: no graph.json written — skipped"
+        return 0
+    fi
+
+    "$GRAPHIFY_VENV/bin/graphify" global add "$graph" --as "$repo"
 }
 
 # graph_digest: sha256 of the global graph, or empty if it does not exist yet.
@@ -172,16 +196,35 @@ main() {
     before="$(graph_digest)"
 
     mkdir -p "$GRAPHIFY_REPOS"
-    local repo
+
+    # ONE BAD REPO MUST NOT COST THE OTHER 199. Everything up to this point is
+    # structural — the secret fetch, the GitHub listing — and still aborts the run
+    # under `set -e`, because a failure there means the run cannot do its job at
+    # all. Inside the loop the opposite is true: a repo that was renamed, deleted
+    # mid-run, or simply has nothing parseable in it is a routine event on a
+    # ~200-repo org, and the graph should still be updated for everything else.
+    local repo failed=0
     for repo in "${changed[@]}"; do
         log "--- ${repo}"
-        sync_repo "$repo"
-        scan_repo "$repo"
+        if ! sync_repo "$repo"; then
+            log "  ${repo}: fetch/clone failed — skipped"
+            failed=$((failed + 1))
+            continue
+        fi
+        if ! scan_repo "$repo"; then
+            log "  ${repo}: merge failed — skipped"
+            failed=$((failed + 1))
+            continue
+        fi
     done
 
-    # Only reached if every repo above succeeded — `set -e` aborts the run
-    # otherwise, leaving the watermark untouched so the next run retries the same
-    # set rather than silently skipping past a failure.
+    if [[ $failed -gt 0 ]]; then
+        log "${failed} of ${#changed[@]} repo(s) were skipped (see above)"
+    fi
+
+    # The watermark advances even when some repos were skipped. Holding it back
+    # would make every future run retry the same unindexable repos forever and
+    # never record progress on the ones that did work.
     echo "$run_started" > "$GRAPHIFY_STATE"
 
     # ---- Gate 2 ----------------------------------------------------------
