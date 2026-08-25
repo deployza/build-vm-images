@@ -24,22 +24,6 @@ Environment=HOME=/data/graphify
 # volume that holds the graph.
 Environment=CLOUDSDK_CONFIG=/tmp/gcloud
 
-# Mirror this unit's output to the serial console as well as the journal.
-#
-# This box has no Ops Agent (deliberately — memory), so journald never reaches
-# Cloud Logging, and reading the journal needs SSH, which needs IAP, which needs a
-# role not everyone has. That left the hourly refresh — the part most likely to
-# fail — with no remotely readable log at all. Console output can be read by
-# anyone with compute.instances.getSerialPortOutput, no shell required:
-#
-#   gcloud compute instances get-serial-port-output graphify \
-#     --zone=asia-east1-a --project=tools-tech-463909
-#
-# Safe for a oneshot that runs hourly; do NOT copy this to graphify-mcp.service,
-# which restarts every 30s when unhealthy and would flood the console.
-StandardOutput=journal+console
-StandardError=journal+console
-
 ExecStart=/usr/local/bin/graphify-refresh
 
 # THE IMPORTANT LINE. `global add` loads, merges and rewrites the ENTIRE global
