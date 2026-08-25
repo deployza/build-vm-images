@@ -174,4 +174,5 @@ Consumers launch with `--image-family=graphify --image-project=tools-tech-463909
 
 | Version | Date       | Change                              |
 | ------- | ---------- | ----------------------------------- |
-| 1-0     | 2026-08-25 | Initial image. graphify 0.9.48.     |
+| 1-0     | 2026-08-25 | Initial image. graphify 0.9.48. **Broken** — see 1-1. |
+| 1-1     | 2026-08-25 | **Two independent bugs found on first deployment.** (1) `CLOUDSDK_CONFIG=/tmp/gcloud` on both units — gcloud writes a credential cache to `$HOME`, which `ProtectSystem=strict` + `ReadOnlyPaths=/data` made read-only, so `gcp-secret` failed and the server crash-looped 213 times. (2) `graphify extract` exits non-zero on a repo that yields an empty graph (static-UI, config-only or empty repos), and `set -e` turned that into aborting the whole run — one repo killed the refresh for all ~200, hourly. Per-repo failures are now skipped and counted, never fatal. |
