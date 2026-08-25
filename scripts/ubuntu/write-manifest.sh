@@ -46,6 +46,19 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # graphify lives in a venv, not on PATH, so probe the interpreter directly.
+  # The pip freeze matters more than the version string: the tree-sitter grammar
+  # set is what determines which repos index to anything, and it is invisible
+  # otherwise (a missing HCL grammar yields 0 nodes silently, not an error).
+  if [ -x /opt/graphify/venv/bin/graphify ]; then
+    echo "== graphify --version =="
+    /opt/graphify/venv/bin/graphify --version 2>&1 || true
+    echo
+    echo "== graphify venv packages =="
+    /opt/graphify/venv/bin/pip freeze 2>/dev/null || true
+    echo
+  fi
+
   echo "== dpkg packages =="
   dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null | sort
 } > "$MANIFEST"

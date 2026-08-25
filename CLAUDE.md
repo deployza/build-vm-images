@@ -45,9 +45,22 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > not a shared source**. Do not reintroduce a cross-repo "single source" coupling;
 > if a version needs to change in both, change both.
 
-> **Current state.** Six flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Per-flavor asset bundles.** `scripts/<os>/` proper holds the **shared**
+> installers — the ones several flavors run (`install-basics.sh`,
+> `install-java.sh`, …). A flavor that brings a large set of files **used by
+> nothing else** puts them in its own subdirectory, `scripts/<os>/<flavor>/`, and
+> the flavor's Packer template invokes
+> `bash /tmp/scripts/<flavor>/install-<flavor>.sh`. The `file` provisioner copies
+> `scripts/<os>/` recursively, so the subdirectory arrives at
+> `/tmp/scripts/<flavor>/` with no template change beyond that path.
+> `graphify` is the first flavor to do this (11 files: units, helper binaries and
+> its env file). Keep genuinely shared installers flat — this is for
+> single-flavor payloads, not a general reorganisation.
+
+> **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
-> `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea).
+> `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
+> `graphify` (the MCP knowledge-graph server — the only flavor with no Java).
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -61,6 +74,33 @@ These are self-contained — there is no build-time dependency on a sibling repo
   not installed in this environment, and these templates target GCE — builds only
   run in Cloud Build (from the repo root, `/workspace`). Reason about template
   correctness by reading the HCL; the real validation is the next Cloud Build run.
+- **A hand-run `gcloud builds submit` MUST pass `--service-account`.** Cloud Build
+  no longer defaults to the legacy `<project-number>@cloudbuild.gserviceaccount.com`;
+  a build submitted without an explicit identity runs as the **Compute Engine
+  default** SA and dies before it starts, on the source tarball it cannot read:
+
+  ```
+  ERROR: could not resolve source: googleapi: Error 403:
+  347018192564-compute@developer.gserviceaccount.com does not have
+  storage.objects.get access to the Google Cloud Storage object
+  ```
+
+  It reads like a bucket problem and is an identity one — your own credentials
+  uploaded the tarball fine; the *build* cannot read it back. Pass the same SA the
+  triggers use (`build-terraform/builds/cloudbuild-triggers.tf`):
+
+  ```bash
+  gcloud builds submit \
+    --config images/ubuntu/<flavor>/cloudbuild.yaml \
+    --service-account=projects/tools-tech-463909/serviceAccounts/build-service-account@tools-tech-463909.iam.gserviceaccount.com \
+    --project=tools-tech-463909 \
+    .
+  ```
+
+  Verified 2026-08-25 on the `graphify` flavor: bare command fails as above, this
+  one succeeds. Triggers are unaffected — they already set `service_account`.
+  Every flavor's `<flavor>.md` still shows the bare form; treat this as the
+  correction until they are updated.
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
@@ -129,7 +169,17 @@ target GCP project. These are one-time, per-project steps.
 2. **Grant the Cloud Build service account the roles Packer needs.** Packer
    creates a temporary "bake" VM, SSHes in to run the `install-*.sh`
    provisioners as root, snapshots the disk into an image, then deletes the VM.
-   The Cloud Build SA is the identity doing all of that:
+   The Cloud Build SA is the identity doing all of that.
+
+   > **`$CB_SA` below is the LEGACY default and is no longer what runs a build.**
+   > Cloud Build now uses the Compute Engine default SA unless a build names an
+   > identity. In `tools-tech-463909` the identity that actually matters is
+   > `build-service-account@tools-tech-463909.iam.gserviceaccount.com` — it is what
+   > every trigger sets and what a hand-run submit must pass via
+   > `--service-account` (see Conventions). It already holds these roles, granted
+   > in `build-terraform/bootstrap/tools_tech.tf`, so in this project step 2 is
+   > already done. The commands below remain correct for standing up a *new*
+   > project; substitute the SA you intend builds to run as.
    ```bash
    PROJECT_ID="$(gcloud config get-value project)"
    PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
@@ -245,6 +295,13 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `tomcat` (family `tomcat`): basic tools + Java + Tomcat (the primary flavor).
 - `mysql` (family `mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
+- `graphify` (family `graphify`): basic tools + a Python venv holding graphify and
+  its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
+  **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
+  keeps its assets in `scripts/ubuntu/graphify/`. It also deliberately omits
+  `install-vm-startup.sh`: that launcher requires `APP_NAME`/`APP_ENV` and expects
+  to deploy a WAR from GCS into Tomcat, none of which applies here. See
+  `images/ubuntu/graphify/graphify.md`.
 - `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image
