@@ -35,6 +35,9 @@ readonly SVC_HOME="/data/graphify"
 readonly REPOS_DIR="/data/repos"
 readonly SWAPFILE="/data/swapfile"
 readonly SWAP_SIZE="2G"
+# One line per applied migration. On the DATA disk, so it survives an image swap
+# — which is the whole point: these run once per data disk, not once per boot.
+readonly MIGRATIONS="/data/graphify/.migrations"
 
 # =============================================================================
 # 1. Data disk
@@ -112,12 +115,58 @@ setup_service_home() {
 }
 
 # =============================================================================
+# 4. One-shot data-disk migrations
+# =============================================================================
+#
+# WHY THIS EXISTS. The boot disk is replaced wholesale by an image swap, but the
+# DATA disk survives — so a change to what the software indexes cannot, on its
+# own, reach state that is already on that disk. There is no SSH to this VM
+# (§7 of graphify-mcp.md), so "just go and delete the file" is not available.
+#
+# A migration is a named line in $MIGRATIONS. Adding a new one is: pick a name
+# that will never be reused, and put its body behind `if needs_migration <name>`.
+
+# needs_migration <name>: true exactly once per data disk, then never again.
+# The stamp is written BEFORE the body runs, deliberately — a migration that
+# fails half-way must not re-run on every subsequent boot and wedge the box in a
+# loop. The failure is visible in the journal; a retry is a human decision.
+needs_migration() {
+    local name="$1"
+    if [[ -f "$MIGRATIONS" ]] && grep -qxF "$name" "$MIGRATIONS"; then
+        return 1
+    fi
+    echo "$name" >> "$MIGRATIONS"
+    chown "${SVC_USER}:${SVC_USER}" "$MIGRATIONS"
+    chmod 640 "$MIGRATIONS"
+    return 0
+}
+
+apply_migrations() {
+    # md-indexing-v1 (image 1-2). The refresh gained a Markdown pass, so every
+    # repo's *.md now belongs in the graph — but Gate 1 only rescans repos whose
+    # GitHub pushed_at is newer than the watermark. Every repo already cloned
+    # here is unchanged, so without this the Markdown pass would run over nothing:
+    # each repo would keep its code-only subgraph until someone happened to push
+    # to it, and a quiet repo would never gain its docs at all. `build-docs`,
+    # newly un-excluded, would not even be cloned.
+    #
+    # Clearing the watermark makes the next refresh treat every repo as changed —
+    # one full pass (~5 min of CPU, clones already present), once.
+    if needs_migration "md-indexing-v1"; then
+        log "migration md-indexing-v1: clearing the refresh watermark so the"
+        log "  next run re-indexes every repo and picks up Markdown"
+        rm -f "${SVC_HOME}/last-run"
+    fi
+}
+
+# =============================================================================
 # Main
 # =============================================================================
 main() {
     mount_data_disk
     setup_swap
     setup_service_home
+    apply_migrations
     log "per-instance provisioning complete; systemd starts the units from here"
 }
 
