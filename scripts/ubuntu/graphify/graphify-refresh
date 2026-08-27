@@ -1,6 +1,10 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# graphify-refresh — bring the code knowledge graph up to date.
+# graphify-refresh — bring the knowledge graph up to date.
+#
+# "Knowledge graph", not "code knowledge graph": each repo contributes both its
+# code (tree-sitter AST) and its Markdown (graphify's own tokenless Markdown
+# extractor, via graphify-md-graph). See scan_repo.
 #
 # Baked to /usr/local/bin/graphify-refresh; ExecStart of graphify-refresh.service,
 # fired hourly by graphify-refresh.timer.
@@ -119,6 +123,13 @@ sync_repo() {
 
 # scan_repo <name>: parse the tree and merge the result into the global graph.
 #
+# TWO PASSES, ONE graph.json. `graphify global add --as <repo>` REPLACES that
+# repo's whole subgraph, so code and docs must arrive in a single file:
+#
+#   1. graphify extract --code-only   tree-sitter AST over code files
+#   2. graphify-md-graph --merge      graphify's own Markdown extractor
+#   3. graphify global add            one merge, one node namespace
+#
 # --code-only is not an optimisation, it is what keeps this run free and offline.
 # graphify classifies Markdown as a *document*, and documents go through
 # LLM-based semantic extraction: without it a scan HARD-FAILS with "no LLM API
@@ -126,8 +137,14 @@ sync_repo() {
 # them, and everything left is tree-sitter AST parsing — deterministic, no
 # network, no per-token bill.
 #
-# A REPO THAT CANNOT BE INDEXED IS NORMAL, NOT AN ERROR. `graphify extract` exits
-# NON-ZERO when a repo yields an empty graph:
+# Step 2 is what puts the Markdown back WITHOUT an LLM. graphify ships a
+# deterministic Markdown extractor that the CLI never reaches; graphify-md-graph
+# calls it directly, at zero tokens. Order is load-bearing: `graphify extract`
+# rewrites graph.json from scratch, so the Markdown pass must run AFTER it.
+# Reversing the two silently discards every doc node.
+#
+# A REPO WITH NO CODE IS NORMAL, NOT AN ERROR — and is no longer skipped.
+# `graphify extract` exits NON-ZERO when a repo yields an empty graph:
 #
 #   [graphify extract] graph is empty — extraction produced no nodes.
 #   [graphify extract] found 0 code, 0 docs, 0 papers, 0 images
@@ -136,20 +153,34 @@ sync_repo() {
 # exists, even under [all]), a config-only repo, or an empty one. Under
 # `set -e` a single such repo aborted the whole run — which is exactly what
 # happened to `billing-ui`, killing the refresh for every other repo, hourly,
-# indefinitely. Skip it and keep going; the failure is per-repo, never per-run.
+# indefinitely. The failure is per-repo, never per-run.
+#
+# It is now also not necessarily the end of the story: a docs-only repo fails
+# step 1 and still produces a real graph from step 2 (measured: `build-docs`,
+# 0 code files, 63 nodes and 75 edges from its Markdown alone). So a failed
+# extract is logged and the Markdown pass runs regardless; the decision to skip
+# is deferred to the node count at the end.
 scan_repo() {
     local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
     local graph="${dir}/graphify-out/graph.json"
 
     if ! "$GRAPHIFY_VENV/bin/graphify" extract "$dir" --code-only; then
-        log "  ${repo}: extract produced no usable graph — skipped"
-        return 0
+        log "  ${repo}: no code graph — trying Markdown only"
     fi
 
-    # Belt and braces: a zero exit with no graph file would otherwise make
-    # `global add` the thing that fails.
-    if [[ ! -s "$graph" ]]; then
-        log "  ${repo}: no graph.json written — skipped"
+    # Never fatal on its own: a repo with no Markdown is the common case, and a
+    # code graph that is already written must still reach `global add`.
+    if ! "$GRAPHIFY_VENV/bin/python" /usr/local/bin/graphify-md-graph \
+            "$dir" --merge; then
+        log "  ${repo}: Markdown pass failed — continuing with code nodes only"
+    fi
+
+    # The real gate, and it must count NODES rather than test the file. Step 2
+    # writes a well-formed graph.json even when it finds nothing, so `-s` now
+    # passes for a repo with no code and no docs — and `global add` would happily
+    # register a 0-node repo in the manifest.
+    if [[ ! -s "$graph" ]] || ! jq -e '(.nodes | length) > 0' "$graph" >/dev/null 2>&1; then
+        log "  ${repo}: graph has no nodes — skipped"
         return 0
     fi
 
@@ -228,6 +259,19 @@ main() {
     echo "$run_started" > "$GRAPHIFY_STATE"
 
     # ---- Gate 2 ----------------------------------------------------------
+    #
+    # EXPECT ONE EXTRA RESTART PER CODE REPO when the Markdown pass first runs
+    # over an already-cloned tree, and exactly one. Measured over five
+    # consecutive runs on the same repo: the Markdown pass appends its nodes at
+    # the end of graph.json, which makes the NEXT `graphify extract` emit the
+    # same node set in a different order — same nodes, same edges, different
+    # bytes, therefore a different sha256 and a real `global add`. It converges
+    # on run 2 and the digest is then byte-identical on runs 3, 4 and 5. A
+    # docs-only repo is stable from run 1.
+    #
+    # So the first refresh after this ships costs a restart, the second costs one
+    # more, and the steady state is unchanged. Do not go looking for a bug in
+    # Gate 2 on that second run.
     after="$(graph_digest)"
     if [[ "$after" == "$before" ]]; then
         log "global graph unchanged — skipping restart"

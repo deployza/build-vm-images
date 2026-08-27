@@ -78,10 +78,24 @@ python3 -m venv /opt/graphify/venv
 mkdir -p /etc/graphify
 install -m 644 "$SCRIPT_DIR/graphify.env" /etc/graphify/graphify.env
 
-for helper in gcp-secret graphify-serve graphify-refresh \
+for helper in gcp-secret graphify-serve graphify-refresh graphify-md-graph \
               graphify-git-askpass graphify-log-failure; do
     install -m 755 "$SCRIPT_DIR/$helper" "/usr/local/bin/$helper"
 done
+
+# The vendored Markdown extractor, imported by graphify-md-graph from its own
+# directory (the script puts its realpath on sys.path). Installed 644, not 755:
+# it is a module, never executed directly.
+#
+# Vendored rather than imported from the venv because reaching graphify's
+# extractor needs four PRIVATE symbols, one of which failed silently when absent.
+# See the file's header. It does NOT move when GRAPHIFY_VERSION changes — after
+# any upgrade, run the drift check:
+#
+#   /opt/graphify/venv/bin/python /usr/local/bin/graphify-md-graph \
+#       /data/repos/<repo> --self-test
+install -m 644 "$SCRIPT_DIR/graphify_md_extract.py" \
+    /usr/local/bin/graphify_md_extract.py
 
 # The per-instance boot script. Named without its .sh extension on the target,
 # matching the other helpers, since it is invoked as a command by its unit.
@@ -135,6 +149,52 @@ systemctl enable graphify-mcp.service
 systemctl enable graphify-refresh.timer
 
 /opt/graphify/venv/bin/graphify --version
+
+# ---------------------------------------------------------------------------
+# Vendored-extractor drift check — FAILS THE IMAGE BUILD, deliberately.
+#
+# graphify_md_extract.py is a frozen copy of graphify's Markdown extractor. It
+# does not move when GRAPHIFY_VERSION does, so without this an upgrade would
+# silently ship stale extraction behaviour — and "silently" is the failure mode
+# this whole helper exists to avoid.
+#
+# The fixture is written here rather than pointed at a repo so the check is
+# self-contained and identical on every build. It exercises the parts most likely
+# to drift: frontmatter, nested headings, a fenced block, and all three link
+# forms (inline, reference-style, wikilink).
+# ---------------------------------------------------------------------------
+FIXTURE="$(mktemp -d)"
+cat > "$FIXTURE/index.md" <<'FIX'
+---
+title: "Index"
+tags: [a, b]
+nested:
+  key: value
+---
+# Index
+Inline [link](./other.md), a [[wikilink]], and a ref [label].
+
+[label]: ./other.md
+
+## Section
+```
+# not a heading
+```
+### Deeper
+FIX
+cat > "$FIXTURE/other.md" <<'FIX'
+# Other
+Back to [Index](./index.md).
+FIX
+# The [[wikilink]] above resolves to this file, so the check covers the wikilink
+# path rather than only its dangling-target branch.
+cat > "$FIXTURE/wikilink.md" <<'FIX'
+# Wikilink target
+FIX
+
+/opt/graphify/venv/bin/python /usr/local/bin/graphify-md-graph \
+    "$FIXTURE" --self-test
+rm -rf "$FIXTURE"
 
 echo "graphify ${GRAPHIFY_VERSION} installed (venv /opt/graphify/venv)"
 echo "Units enabled but not started - they need /data, mounted by the VM boot script."
