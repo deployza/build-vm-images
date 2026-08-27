@@ -6,9 +6,12 @@ in a Python venv, exposed as an **MCP server** over Streamable HTTP and refreshe
 hourly, both running as `systemd` units.
 
 graphify keeps a knowledge graph of the organisation's repositories and serves it
-to Claude Code so it can answer questions that span repos. **No application code
-is written for it** — the image installs the upstream package and the units that
-run it.
+to Claude Code so it can answer questions that span repos.
+
+> **Since image 1-2 this flavor DOES carry application code**, which the rest of
+> the fleet does not: `graphify-md-graph` (ours) and `graphify_md_extract.py`
+> (vendored from graphify, Apache-2.0). Everything else here is still the upstream
+> package plus the units that run it. See *Language coverage* for why.
 
 The image ships **without** any configuration for a specific deployment and
 **without** any secret. The MCP API key and the read-only GitHub PAT are fetched
@@ -48,7 +51,8 @@ This is the thing to understand before changing anything here.
 | `/opt/graphify/venv` (~191 MB, every tree-sitter grammar) | `/data/repos` — shallow clones |
 | `/usr/local/bin/graphify-*`, `gcp-secret` | `/data/graphify/.graphify/global-graph.json` |
 | `/etc/graphify/graphify.env` | `/data/graphify/last-run` — the refresh watermark |
-| the four systemd units | `/data/swapfile` |
+| the four systemd units | `/data/graphify/.migrations` — applied one-shot migrations |
+| | `/data/swapfile` |
 
 Two consequences that are easy to get wrong:
 
@@ -88,6 +92,8 @@ Tomcat. graphify has no WAR, no `conf/` and no Tomcat.
 - `graphify/graphify-boot.sh` — per-instance boot work (data disk, swap, home)
 - `graphify/graphify-serve` — fetches the API key, exports it, `exec`s the server
 - `graphify/graphify-refresh` — the gated hourly refresh
+- `graphify/graphify-md-graph` — the Markdown pass, plus `--self-test`
+- `graphify/graphify_md_extract.py` — **vendored** (Apache-2.0) Markdown extractor
 - `graphify/gcp-secret` — reads one Secret Manager secret to stdout
 - `graphify/graphify-git-askpass` — feeds the PAT to git without it reaching argv
 - `graphify/graphify-log-failure` — the `OnFailure=` reporter
@@ -118,9 +124,29 @@ image installs `graphifyy[mcp,terraform,sql]`.
 | SQL schemas | ✅ `[sql]` | warns until added |
 | Static UI (HTML/CSS) | ❌ **none** | no HTML or CSS grammar exists, even under `[all]` |
 
-Markdown is classified as a *document*, not code, and documents need an LLM key —
-a scan hard-fails without one. Every scan here runs `--code-only`, which skips
-them deliberately instead.
+| **Markdown** | ✅ **no grammar, no LLM** | vendored extractor, see below. `build-docs`: 63 nodes / 75 edges, 0 tokens |
+
+Markdown is classified by graphify as a *document*, and documents go through
+LLM-based extraction — so `--code-only` skips them and a scan without it
+hard-fails asking for a key. But graphify **also ships a deterministic Markdown
+extractor** that needs no LLM at all; it is simply unreachable from the CLI.
+`graphify-md-graph` calls it directly, as a second pass per repo, merging doc
+nodes into the same `graph.json` before `global add`.
+
+That extractor is **vendored** into `graphify_md_extract.py` rather than imported,
+because reaching graphify's own requires four private symbols — one of them a
+module global read via `getattr(..., None)`, so an upstream rename would not
+raise, it would silently stop resolving links. The vendored copy is verified
+byte-identical to the library's output, and `install-graphify.sh` re-checks that
+at **bake time** against a fixture: a `GRAPHIFY_VERSION` bump that changes
+extraction fails the image build rather than shipping stale behaviour.
+
+To check drift by hand after an upgrade:
+
+```bash
+/opt/graphify/venv/bin/python /usr/local/bin/graphify-md-graph \
+    /data/repos/<repo> --self-test
+```
 
 ## Build
 
@@ -176,3 +202,4 @@ Consumers launch with `--image-family=graphify --image-project=tools-tech-463909
 | ------- | ---------- | ----------------------------------- |
 | 1-0     | 2026-08-25 | Initial image. graphify 0.9.48. **Broken** — see 1-1. |
 | 1-1     | 2026-08-25 | **Two independent bugs found on first deployment.** (1) `CLOUDSDK_CONFIG=/tmp/gcloud` on both units — gcloud writes a credential cache to `$HOME`, which `ProtectSystem=strict` + `ReadOnlyPaths=/data` made read-only, so `gcp-secret` failed and the server crash-looped 213 times. (2) `graphify extract` exits non-zero on a repo that yields an empty graph (static-UI, config-only or empty repos), and `set -e` turned that into aborting the whole run — one repo killed the refresh for all ~200, hourly. Per-repo failures are now skipped and counted, never fatal. |
+| 1-2     | 2026-08-27 | **Markdown is now indexed, with no LLM.** New helper `graphify-md-graph` calls graphify's own tokenless Markdown extractor, which the CLI never reaches (`.md` classifies as a *document*, and the AST pass runs over code files only). `graphify-refresh` gains a second pass per repo, merging doc nodes into the same `graph.json` before `global add`. A repo whose `extract` finds no code is no longer skipped — `build-docs` yields **63 nodes / 75 edges** from Markdown alone and was removed from `GRAPHIFY_EXCLUDE_REPOS`. The skip gate now counts nodes with `jq` instead of trusting `extract`'s exit code. Expect **one** extra MCP restart per code repo on the first warm run; the graph converges on run 2. The extractor is **vendored** (`graphify_md_extract.py`, Apache-2.0) rather than imported, because reaching graphify's own needs four private symbols — one of which failed silently when absent. `install-graphify.sh` now runs a drift check against a fixture at bake time, so a `GRAPHIFY_VERSION` bump that changes extraction **fails the image build**. |
