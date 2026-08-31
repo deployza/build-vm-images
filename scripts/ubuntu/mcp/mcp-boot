@@ -1,48 +1,72 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# graphify-boot — per-instance provisioning, run once per boot by
-# graphify-boot.service before the server and refresh units start.
+# mcp-boot — per-instance provisioning, run once per boot by
+# mcp-boot.service before the server and refresh units start.
 #
-# Baked to /usr/local/bin/graphify-boot. This is the graphify flavor's equivalent
-# of vm-startup.sh: the image cannot bake it away, because everything it touches
-# belongs to the DATA DISK, which does not exist at bake time.
+# Baked to /usr/local/bin/mcp-boot. This is the mcp flavor's equivalent of
+# vm-startup.sh: the image cannot bake it away, because everything it touches is
+# per-instance state that does not exist at bake time.
 #
-#   1. format (first boot only) and mount the data disk at /data
-#   2. a 2 GB swapfile on it
+#   1. /data — a directory on the boot disk, or a mounted disk if one is attached
+#   2. a 2 GB swapfile in it
 #   3. the service user's HOME on it — mandatory, see setup_service_home
 #
 # It deliberately does NOT install software and does NOT start the other units.
-# Software is baked by install-graphify.sh; start-up ordering is systemd's job —
-# graphify-mcp.service and graphify-refresh.service both declare
-# Requires=/After= on graphify-boot.service, so they run once this succeeds and
+# Software is baked by install-mcp.sh; start-up ordering is systemd's job —
+# mcp.service and mcp-refresh.service both declare
+# Requires=/After= on mcp-boot.service, so they run once this succeeds and
 # not at all if it fails.
 #
 # Runs on EVERY boot, so every step is idempotent.
 #
-# Logs: sudo journalctl -u graphify-boot.service -b
+# Logs: sudo journalctl -u mcp-boot.service -b
 # -----------------------------------------------------------------------------
 set -euxo pipefail
 
-log() { echo "[graphify-boot] $*"; }
+log() { echo "[mcp-boot] $*"; }
 
-# DATA_DEV must match the attached_disk device_name set by the consuming
-# Terraform (build-terraform builds/graphify.tf). The rest match the paths in
-# /etc/graphify/graphify.env.
-readonly DATA_DEV="/dev/disk/by-id/google-graphify-data"
+# DATA_DEV is only used when a disk IS attached — it must then match the
+# attached_disk device_name in build-terraform (builds/vms.tf). Normally no such
+# disk exists. The rest match the paths in /etc/mcp/mcp.env.
+readonly DATA_DEV="/dev/disk/by-id/google-mcp-data"
 readonly DATA_MNT="/data"
-readonly SVC_USER="graphify"
-readonly SVC_HOME="/data/graphify"
+readonly SVC_USER="mcp"
+readonly SVC_HOME="/data/mcp"
 readonly REPOS_DIR="/data/repos"
 readonly SWAPFILE="/data/swapfile"
 readonly SWAP_SIZE="2G"
-# One line per applied migration. On the DATA disk, so it survives an image swap
-# — which is the whole point: these run once per data disk, not once per boot.
-readonly MIGRATIONS="/data/graphify/.migrations"
+# One line per applied migration. Now on the boot disk with the rest of /data, so
+# it resets on an image swap — harmless, because the state a migration would fix
+# is reset at the same moment and rebuilt by the next refresh.
+readonly MIGRATIONS="/data/mcp/.migrations"
 
 # =============================================================================
-# 1. Data disk
+# 1. Data area
 # =============================================================================
-mount_data_disk() {
+#
+# /data normally lives on the BOOT DISK — a plain directory, no second volume.
+# The boot disk is 20 GB because GCE refuses one smaller than the image, and the
+# OS plus venv use ~2.7 GB of it, so there is ~12 GB spare for clones, graphs and
+# swap. A dedicated disk bought nothing but a resource to manage, a device-name
+# contract between two repos, and a zonal volume that could not follow the VM
+# across regions.
+#
+# THE TRADE: /data is destroyed with the boot disk on an image swap, so a
+# replacement re-indexes from scratch. Measured at ~12 min of CPU for the whole
+# org, which is cheap against the complexity it removes.
+#
+# A separate disk is still SUPPORTED. Attach one as device_name "mcp-data" and it
+# is formatted and mounted exactly as before — so this image runs with or without
+# it, and neither repo has to deploy in lockstep with the other.
+setup_data_area() {
+    if [[ ! -b "$DATA_DEV" ]]; then
+        log "no data disk attached — using ${DATA_MNT} on the boot disk"
+        mkdir -p "$DATA_MNT"
+        return
+    fi
+
+    log "data disk present at ${DATA_DEV} — formatting/mounting it"
+
     # blkid is the guard against reformatting a disk that already holds the
     # graph: it succeeds only once a filesystem is present. Never add -F to the
     # mkfs below — that would defeat this check on any disk blkid cannot read.
@@ -77,7 +101,7 @@ mount_data_disk() {
 # ~300 MB projected at ~200) it should never be touched — it exists so an
 # unexpectedly large merge degrades into slowness instead of an OOM kill.
 #
-# On the data disk deliberately, to keep write churn off the boot volume.
+# Lives in /data. On the boot disk by default; measured usage never reaches it.
 setup_swap() {
     if [[ ! -f "$SWAPFILE" ]]; then
         log "creating ${SWAP_SIZE} swapfile at ${SWAPFILE}"
@@ -100,10 +124,9 @@ setup_swap() {
 #
 # NOT optional and NOT arbitrary. graphify's `global add` writes to
 # Path.home()/".graphify" — hardcoded upstream, with no flag to redirect it.
-# install-graphify.sh creates the user with --home /data/graphify
-# --no-create-home precisely so the directory is made here, after the disk is
-# mounted. A home on the boot disk would put the merged graph there, to be
-# destroyed by the next image swap — silently, with no error.
+# install-mcp.sh creates the user with --home /data/mcp --no-create-home
+# precisely so the directory is made here, at boot. `.graphify` is upstream's
+# hardcoded name and stays as it is.
 setup_service_home() {
     mkdir -p "${SVC_HOME}/.graphify" "$REPOS_DIR"
     chown -R "${SVC_USER}:${SVC_USER}" "$SVC_HOME" "$REPOS_DIR"
@@ -121,7 +144,7 @@ setup_service_home() {
 # WHY THIS EXISTS. The boot disk is replaced wholesale by an image swap, but the
 # DATA disk survives — so a change to what the software indexes cannot, on its
 # own, reach state that is already on that disk. There is no SSH to this VM
-# (§7 of build-terraform/docs/graphify-mcp.md, sibling repo), so "just go and
+# (§7 of build-terraform/docs/mcp.md, sibling repo), so "just go and
 # delete the file" is not available.
 #
 # A migration is a named line in $MIGRATIONS. Adding a new one is: pick a name
@@ -164,7 +187,7 @@ apply_migrations() {
 # Main
 # =============================================================================
 main() {
-    mount_data_disk
+    setup_data_area
     setup_swap
     setup_service_home
     apply_migrations

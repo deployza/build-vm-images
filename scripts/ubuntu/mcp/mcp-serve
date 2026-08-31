@@ -1,7 +1,7 @@
 #!/bin/bash
-# graphify-serve — start the graphify MCP server in the foreground.
+# mcp-serve — start the graphify MCP server in the foreground.
 #
-# Baked to /usr/local/bin/graphify-serve; ExecStart of graphify-mcp.service.
+# Baked to /usr/local/bin/mcp-serve; ExecStart of mcp.service.
 #
 # Its whole reason to exist is the API key. graphify accepts either --api-key or
 # the GRAPHIFY_API_KEY environment variable. The flag would put the key in the
@@ -15,9 +15,9 @@
 # NO `set -x` — this script handles the secret. See gcp-secret.
 set -euo pipefail
 
-source /etc/graphify/graphify.env
+source /etc/mcp/mcp.env
 
-GRAPHIFY_API_KEY="$(/usr/local/bin/gcp-secret "$GRAPHIFY_API_KEY_SECRET")"
+GRAPHIFY_API_KEY="$(/usr/local/bin/gcp-secret "$MCP_API_KEY_SECRET")"
 export GRAPHIFY_API_KEY
 
 # --stateless: every request is self-contained, so the load balancer never has to
@@ -25,13 +25,13 @@ export GRAPHIFY_API_KEY
 # 127.0.0.1, where the load balancer cannot reach the process at all.
 #
 # On a fresh VM the graph does not exist yet and this exits non-zero. That is
-# expected and handled: graphify-mcp.service carries Restart=always, so the unit
-# retries until the first graphify-refresh run produces a graph, then comes up on
+# expected and handled: mcp.service carries Restart=always, so the unit
+# retries until the first mcp-refresh run produces a graph, then comes up on
 # its own. No manual step, and no ordering dependency between the two units.
-exec "$GRAPHIFY_VENV/bin/python" -m graphify.serve \
-    --graph "$GRAPHIFY_GRAPH" \
+exec "$MCP_VENV/bin/python" -m graphify.serve \
+    --graph "$MCP_GRAPH" \
     --transport http \
     --host 0.0.0.0 \
-    --port "$GRAPHIFY_PORT" \
-    --path "$GRAPHIFY_HTTP_PATH" \
+    --port "$MCP_PORT" \
+    --path "$MCP_HTTP_PATH" \
     --stateless

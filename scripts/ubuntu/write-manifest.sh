@@ -50,12 +50,12 @@ MANIFEST=/etc/image-manifest.txt
   # The pip freeze matters more than the version string: the tree-sitter grammar
   # set is what determines which repos index to anything, and it is invisible
   # otherwise (a missing HCL grammar yields 0 nodes silently, not an error).
-  if [ -x /opt/graphify/venv/bin/graphify ]; then
+  if [ -x /opt/mcp/venv/bin/graphify ]; then
     echo "== graphify --version =="
-    /opt/graphify/venv/bin/graphify --version 2>&1 || true
+    /opt/mcp/venv/bin/graphify --version 2>&1 || true
     echo
     echo "== graphify venv packages =="
-    /opt/graphify/venv/bin/pip freeze 2>/dev/null || true
+    /opt/mcp/venv/bin/pip freeze 2>/dev/null || true
     echo
   fi
 

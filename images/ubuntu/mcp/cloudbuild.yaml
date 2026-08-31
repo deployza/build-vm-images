@@ -2,11 +2,11 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _IMAGE_VERSION: '1-3'
+  _IMAGE_VERSION: '1-0'
 
 steps:
   - name: 'hashicorp/packer'
-    args: ['init', 'images/ubuntu/graphify/image.pkr.hcl']
+    args: ['init', 'images/ubuntu/mcp/image.pkr.hcl']
 
   # versions.env (the installers' single source of truth) is sourced here and the
   # pinned versions passed as -var, because packer's file() can't read it from the
@@ -25,5 +25,5 @@ steps:
             -var=image_version=${_IMAGE_VERSION} \
             -var=git_sha=${COMMIT_SHA} \
             -var=graphify_version=$$GRAPHIFY_VERSION \
-            images/ubuntu/graphify/image.pkr.hcl
+            images/ubuntu/mcp/image.pkr.hcl
         done

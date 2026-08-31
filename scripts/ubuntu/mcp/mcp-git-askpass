@@ -2,7 +2,7 @@
 # GIT_ASKPASS helper — feeds the read-only GitHub PAT to git without it ever
 # reaching argv, the filesystem, or a clone's .git/config.
 #
-# Baked to /usr/local/bin/graphify-git-askpass. graphify-refresh exports
+# Baked to /usr/local/bin/mcp-git-askpass. mcp-refresh exports
 # GITHUB_PAT and points GIT_ASKPASS here; git then invokes this once per prompt,
 # passing the prompt text ("Username for 'https://github.com': ") as $1.
 #
@@ -23,6 +23,6 @@ case "$1" in
         printf 'x-access-token\n'
         ;;
     *)
-        printf '%s\n' "${GITHUB_PAT:?GITHUB_PAT is not set — graphify-refresh must export it}"
+        printf '%s\n' "${GITHUB_PAT:?GITHUB_PAT is not set — mcp-refresh must export it}"
         ;;
 esac

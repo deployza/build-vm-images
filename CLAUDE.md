@@ -53,18 +53,18 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > `bash /tmp/scripts/<flavor>/install-<flavor>.sh`. The `file` provisioner copies
 > `scripts/<os>/` recursively, so the subdirectory arrives at
 > `/tmp/scripts/<flavor>/` with no template change beyond that path.
-> `graphify` is the first flavor to do this (11 files: units, helper binaries and
-> its env file). Keep genuinely shared installers flat — this is for
+> `mcp` is the first flavor to do this (15 files: units, helper binaries, its env
+> file and a vendored extractor). Keep genuinely shared installers flat — this is for
 > single-flavor payloads, not a general reorganisation.
 
 > **Why some scripts have no `.sh`.** The extension tracks **how the file is
 > invoked**. Handed to an interpreter (`bash /tmp/scripts/install-basics.sh`) →
 > keep it. Installed to `/usr/local/bin` and invoked as a command → drop it, and
-> name the file in-tree exactly as it is installed. That is all seven graphify
-> helpers (`gcp-secret`, `graphify-serve`, `graphify-refresh`, `graphify-boot`,
+> name the file in-tree exactly as it is installed. That is all seven `mcp`
+> helpers (`gcp-secret`, `mcp-serve`, `mcp-refresh`, `mcp-boot`,
 > …), each called by name from a systemd `ExecStart=` or from git's `GIT_ASKPASS`.
-> It also keeps the set honest: `graphify-md-graph` is **Python**, and `.py` is
-> reserved for `graphify_md_extract.py`, which really is an importable module.
+> It also keeps the set honest: `mcp-md-graph` is **Python**, and `.py` is
+> reserved for `mcp_md_extract.py`, which really is an importable module.
 > The shebang carries the language for editors and for graphify's own indexer,
 > but a `**/*.sh` glob will skip these — **lint by shebang, not by extension**.
 > Known exception: `vm-startup.sh` keeps its extension on the target; it ships on
@@ -74,7 +74,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
-> `graphify` (the MCP knowledge-graph server — the only flavor with no Java).
+> `mcp` (the code knowledge-graph MCP server — the only flavor with no Java).
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -111,10 +111,10 @@ These are self-contained — there is no build-time dependency on a sibling repo
     .
   ```
 
-  Verified 2026-08-25 on the `graphify` flavor: bare command fails as above, this
+  Verified 2026-08-25 on the `mcp` flavor: bare command fails as above, this
   one succeeds. Triggers are unaffected — they already set `service_account`.
-  Every flavor's `<flavor>.md` still shows the bare form; treat this as the
-  correction until they are updated.
+  Only `mcp/mcp.md` shows the corrected form; the other six still show the bare
+  one. Treat this section as the correction until they are updated.
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
@@ -309,13 +309,13 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `tomcat` (family `tomcat`): basic tools + Java + Tomcat (the primary flavor).
 - `mysql` (family `mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
-- `graphify` (family `graphify`): basic tools + a Python venv holding graphify and
+- `mcp` (family `mcp`): basic tools + a Python venv holding graphify and
   its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
   **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
-  keeps its assets in `scripts/ubuntu/graphify/`. It also deliberately omits
+  keeps its assets in `scripts/ubuntu/mcp/`. It also deliberately omits
   `install-vm-startup.sh`: that launcher requires `APP_NAME`/`APP_ENV` and expects
   to deploy a WAR from GCS into Tomcat, none of which applies here. See
-  `images/ubuntu/graphify/graphify.md`.
+  `images/ubuntu/mcp/mcp.md`.
 - `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image

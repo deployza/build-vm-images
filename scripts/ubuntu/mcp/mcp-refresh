@@ -1,13 +1,13 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# graphify-refresh — bring the knowledge graph up to date.
+# mcp-refresh — bring the knowledge graph up to date.
 #
 # "Knowledge graph", not "code knowledge graph": each repo contributes both its
 # code (tree-sitter AST) and its Markdown (graphify's own tokenless Markdown
-# extractor, via graphify-md-graph). See scan_repo.
+# extractor, via mcp-md-graph). See scan_repo.
 #
-# Baked to /usr/local/bin/graphify-refresh; ExecStart of graphify-refresh.service,
-# fired hourly by graphify-refresh.timer.
+# Baked to /usr/local/bin/mcp-refresh; ExecStart of mcp-refresh.service,
+# fired hourly by mcp-refresh.timer.
 #
 # Hourly is affordable only because of two gates that make the common case a
 # no-op:
@@ -31,16 +31,16 @@
 # not the load-merge-rewrite cycle.
 #
 # Logs land in the journal under the unit:
-#   sudo journalctl -u graphify-refresh.service -f
+#   sudo journalctl -u mcp-refresh.service -f
 #
 # NO `set -x`. This script holds the GitHub PAT in its environment, and a traced
 # line would copy it into the journal. See gcp-secret.
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
-source /etc/graphify/graphify.env
+source /etc/mcp/mcp.env
 
-log() { echo "[graphify-refresh] $*"; }
+log() { echo "[mcp-refresh] $*"; }
 
 # =============================================================================
 # Functions
@@ -67,7 +67,7 @@ changed_repos() {
     local page=1 body count oldest
 
     while :; do
-        body="$(gh_api "https://api.github.com/orgs/${GRAPHIFY_GITHUB_ORG}/repos?per_page=100&page=${page}&sort=pushed&direction=desc")"
+        body="$(gh_api "https://api.github.com/orgs/${MCP_GITHUB_ORG}/repos?per_page=100&page=${page}&sort=pushed&direction=desc")"
         count="$(jq 'length' <<<"$body")"
         [[ "$count" -eq 0 ]] && break
 
@@ -91,14 +91,14 @@ changed_repos() {
     done
 }
 
-# exclude_filter: drop the repos named in GRAPHIFY_EXCLUDE_REPOS.
+# exclude_filter: drop the repos named in MCP_EXCLUDE_REPOS.
 # grep exits 1 when it emits nothing, which is a normal outcome here, so the
 # status is swallowed rather than tripping `set -e`.
 exclude_filter() {
-    if [[ -z "${GRAPHIFY_EXCLUDE_REPOS// /}" ]]; then
+    if [[ -z "${MCP_EXCLUDE_REPOS// /}" ]]; then
         cat
     else
-        grep -vxF -f <(printf '%s\n' $GRAPHIFY_EXCLUDE_REPOS) || true
+        grep -vxF -f <(printf '%s\n' $MCP_EXCLUDE_REPOS) || true
     fi
 }
 
@@ -106,7 +106,7 @@ exclude_filter() {
 # remote head. Kept at depth 1 throughout — graphify parses the working tree, so
 # history is dead weight across ~200 repos.
 sync_repo() {
-    local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
+    local repo="$1" dir="${MCP_REPOS}/${repo}"
 
     if [[ -d "${dir}/.git" ]]; then
         git -C "$dir" fetch --depth 1 origin HEAD
@@ -117,7 +117,7 @@ sync_repo() {
         git -C "$dir" clean -fdx -e graphify-out
     else
         git clone --depth 1 \
-            "https://github.com/${GRAPHIFY_GITHUB_ORG}/${repo}.git" "$dir"
+            "https://github.com/${MCP_GITHUB_ORG}/${repo}.git" "$dir"
     fi
 }
 
@@ -127,7 +127,7 @@ sync_repo() {
 # repo's whole subgraph, so code and docs must arrive in a single file:
 #
 #   1. graphify extract --code-only   tree-sitter AST over code files
-#   2. graphify-md-graph --merge      graphify's own Markdown extractor
+#   2. mcp-md-graph --merge      graphify's own Markdown extractor
 #   3. graphify global add            one merge, one node namespace
 #
 # --code-only is not an optimisation, it is what keeps this run free and offline.
@@ -138,7 +138,7 @@ sync_repo() {
 # network, no per-token bill.
 #
 # Step 2 is what puts the Markdown back WITHOUT an LLM. graphify ships a
-# deterministic Markdown extractor that the CLI never reaches; graphify-md-graph
+# deterministic Markdown extractor that the CLI never reaches; mcp-md-graph
 # calls it directly, at zero tokens. Order is load-bearing: `graphify extract`
 # rewrites graph.json from scratch, so the Markdown pass must run AFTER it.
 # Reversing the two silently discards every doc node.
@@ -161,16 +161,16 @@ sync_repo() {
 # extract is logged and the Markdown pass runs regardless; the decision to skip
 # is deferred to the node count at the end.
 scan_repo() {
-    local repo="$1" dir="${GRAPHIFY_REPOS}/${repo}"
+    local repo="$1" dir="${MCP_REPOS}/${repo}"
     local graph="${dir}/graphify-out/graph.json"
 
-    if ! "$GRAPHIFY_VENV/bin/graphify" extract "$dir" --code-only; then
+    if ! "$MCP_VENV/bin/graphify" extract "$dir" --code-only; then
         log "  ${repo}: no code graph — trying Markdown only"
     fi
 
     # Never fatal on its own: a repo with no Markdown is the common case, and a
     # code graph that is already written must still reach `global add`.
-    if ! "$GRAPHIFY_VENV/bin/python" /usr/local/bin/graphify-md-graph \
+    if ! "$MCP_VENV/bin/python" /usr/local/bin/mcp-md-graph \
             "$dir" --merge; then
         log "  ${repo}: Markdown pass failed — continuing with code nodes only"
     fi
@@ -184,12 +184,12 @@ scan_repo() {
         return 0
     fi
 
-    "$GRAPHIFY_VENV/bin/graphify" global add "$graph" --as "$repo"
+    "$MCP_VENV/bin/graphify" global add "$graph" --as "$repo"
 }
 
 # graph_digest: sha256 of the global graph, or empty if it does not exist yet.
 graph_digest() {
-    [[ -f "$GRAPHIFY_GRAPH" ]] && sha256sum "$GRAPHIFY_GRAPH" | cut -d' ' -f1 || true
+    [[ -f "$MCP_GRAPH" ]] && sha256sum "$MCP_GRAPH" | cut -d' ' -f1 || true
 }
 
 # =============================================================================
@@ -202,15 +202,15 @@ main() {
     run_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
     SINCE=""
-    [[ -f "$GRAPHIFY_STATE" ]] && SINCE="$(cat "$GRAPHIFY_STATE")"
+    [[ -f "$MCP_STATE" ]] && SINCE="$(cat "$MCP_STATE")"
     log "watermark: ${SINCE:-<none> (first run — every repo will be indexed)}"
 
     # Into process memory, never to disk. GIT_ASKPASS keeps it out of argv and
     # out of each clone's .git/config; GIT_TERMINAL_PROMPT=0 makes an auth failure
     # an immediate error instead of a hung prompt on a headless box.
-    GITHUB_PAT="$(/usr/local/bin/gcp-secret "$GRAPHIFY_GITHUB_PAT_SECRET")"
+    GITHUB_PAT="$(/usr/local/bin/gcp-secret "$MCP_GITHUB_PAT_SECRET")"
     export GITHUB_PAT
-    export GIT_ASKPASS=/usr/local/bin/graphify-git-askpass
+    export GIT_ASKPASS=/usr/local/bin/mcp-git-askpass
     export GIT_TERMINAL_PROMPT=0
 
     # ---- Gate 1 ----------------------------------------------------------
@@ -219,14 +219,14 @@ main() {
 
     if [[ ${#changed[@]} -eq 0 ]]; then
         log "no repos pushed since the watermark — no fetch, no scan, no restart"
-        echo "$run_started" > "$GRAPHIFY_STATE"
+        echo "$run_started" > "$MCP_STATE"
         return 0
     fi
 
     log "${#changed[@]} repo(s) to refresh: ${changed[*]}"
     before="$(graph_digest)"
 
-    mkdir -p "$GRAPHIFY_REPOS"
+    mkdir -p "$MCP_REPOS"
 
     # ONE BAD REPO MUST NOT COST THE OTHER 199. Everything up to this point is
     # structural — the secret fetch, the GitHub listing — and still aborts the run
@@ -256,7 +256,7 @@ main() {
     # The watermark advances even when some repos were skipped. Holding it back
     # would make every future run retry the same unindexable repos forever and
     # never record progress on the ones that did work.
-    echo "$run_started" > "$GRAPHIFY_STATE"
+    echo "$run_started" > "$MCP_STATE"
 
     # ---- Gate 2 ----------------------------------------------------------
     #
@@ -279,10 +279,10 @@ main() {
     fi
 
     # The restart happens ONCE, here, after the loop — never per repo. Needs root,
-    # which this unit does not run as; /etc/sudoers.d/graphify permits exactly
+    # which this unit does not run as; /etc/sudoers.d/mcp permits exactly
     # this one command and nothing else.
     log "global graph changed — restarting the MCP server (~2 s of 503)"
-    sudo -n /usr/bin/systemctl restart graphify-mcp.service
+    sudo -n /usr/bin/systemctl restart mcp.service
     log "done"
 }
 

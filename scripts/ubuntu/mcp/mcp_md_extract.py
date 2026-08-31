@@ -23,7 +23,7 @@
 #
 # Copying converts an unmanaged upstream risk into ~500 lines we own and can
 # test. The behaviour here is byte-for-byte identical to graphify 0.9.48's — that
-# is asserted by the check in `graphify-md-graph --self-test`, which diffs this
+# is asserted by the check in `mcp-md-graph --self-test`, which diffs this
 # module's output against the installed library's on a real repo.
 #
 # WHAT THIS DOES *NOT* DECOUPLE US FROM
@@ -42,7 +42,7 @@
 # RE-SYNCING ON A GRAPHIFY UPGRADE
 #
 # This file does NOT auto-update with the venv. On a `GRAPHIFY_VERSION` bump, run
-# `graphify-md-graph --self-test`: it compares this module against the newly
+# `mcp-md-graph --self-test`: it compares this module against the newly
 # installed library and fails if they have diverged. Then either re-vendor from
 # the new version or record why the divergence is acceptable.
 # -----------------------------------------------------------------------------

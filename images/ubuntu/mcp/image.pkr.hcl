@@ -1,9 +1,9 @@
-# graphify flavor: basics + the graphify MCP server (as systemd).
-# Family: graphify.
+# mcp flavor: basics + the code knowledge-graph MCP server (graphify), as systemd.
+# Family: mcp.
 #
 # The first flavor with no Java and no Tomcat. It bakes a Python venv holding
 # graphify and every tree-sitter grammar, plus the server and refresh units.
-# See graphify.md.
+# See mcp.md.
 packer {
   required_plugins {
     googlecompute = {
@@ -59,31 +59,31 @@ variable "graphify_version" {
   default = null
 }
 
-source "googlecompute" "graphify" {
+source "googlecompute" "mcp" {
   project_id              = var.project
   zone                    = var.zone
   source_image_family     = var.source_image_family
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
-  image_name              = "graphify-${var.image_version}"
-  image_family            = "graphify"
+  image_name              = "mcp-${var.image_version}"
+  image_family            = "mcp"
   image_description       = "${var.source_image_family} + graphify ${var.graphify_version} MCP server (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
-    flavor   = "graphify"
+    flavor   = "mcp"
     graphify = replace(var.graphify_version, ".", "-")
     built    = "cloudbuild"
   }
 }
 
 build {
-  sources = ["source.googlecompute.graphify"]
+  sources = ["source.googlecompute.mcp"]
 
   provisioner "shell" {
     inline = ["mkdir -p /tmp/scripts"]
   }
 
-  # Recursive: this also carries scripts/ubuntu/graphify/ (the units, helper
-  # binaries and graphify.env) to /tmp/scripts/graphify/.
+  # Recursive: this also carries scripts/ubuntu/mcp/ (the units, helper
+  # binaries and mcp.env) to /tmp/scripts/mcp/.
   provisioner "file" {
     source      = "scripts/ubuntu/"
     destination = "/tmp/scripts/"
@@ -92,7 +92,7 @@ build {
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
-      "IMAGE_FLAVOR=graphify",
+      "IMAGE_FLAVOR=mcp",
       "GIT_SHA=${var.git_sha}",
     ]
     # install-vm-startup.sh is deliberately ABSENT. That launcher requires
@@ -103,7 +103,7 @@ build {
     # which build-terraform does in the VM's own startup script.
     inline = [
       "bash /tmp/scripts/install-basics.sh",
-      "bash /tmp/scripts/graphify/install-graphify.sh",
+      "bash /tmp/scripts/mcp/install-mcp.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }
