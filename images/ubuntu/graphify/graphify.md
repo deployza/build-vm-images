@@ -68,10 +68,10 @@ Two consequences that are easy to get wrong:
 
 Mounting `/data`, the swapfile and the service home are **per-instance** work,
 which is why they are a boot-time unit rather than a bake step — but they are
-still baked *here*, as `graphify-boot.sh`, rather than living in the consuming
+still baked *here*, as `graphify-boot`, rather than living in the consuming
 Terraform as a startup script. All of this flavor's shell belongs to this repo.
 
-> **The one cross-repo contract is the disk device name.** `graphify-boot.sh`
+> **The one cross-repo contract is the disk device name.** `graphify-boot`
 > mounts `/dev/disk/by-id/google-graphify-data`, so the consuming Terraform's
 > `attached_disk` must set `device_name = "graphify-data"`. Nothing else about
 > the VM is this image's business.
@@ -89,7 +89,7 @@ Tomcat. graphify has no WAR, no `conf/` and no Tomcat.
 - `graphify/install-graphify.sh` — `python3-venv`, the `graphify` system user, the
   venv, the helper binaries, the sudoers drop-in, and the four systemd units
 - `graphify/graphify.env` — all tunables, baked to `/etc/graphify/graphify.env`
-- `graphify/graphify-boot.sh` — per-instance boot work (data disk, swap, home)
+- `graphify/graphify-boot` — per-instance boot work (data disk, swap, home)
 - `graphify/graphify-serve` — fetches the API key, exports it, `exec`s the server
 - `graphify/graphify-refresh` — the gated hourly refresh
 - `graphify/graphify-md-graph` — the Markdown pass, plus `--self-test`
@@ -203,3 +203,4 @@ Consumers launch with `--image-family=graphify --image-project=tools-tech-463909
 | 1-0     | 2026-08-25 | Initial image. graphify 0.9.48. **Broken** — see 1-1. |
 | 1-1     | 2026-08-25 | **Two independent bugs found on first deployment.** (1) `CLOUDSDK_CONFIG=/tmp/gcloud` on both units — gcloud writes a credential cache to `$HOME`, which `ProtectSystem=strict` + `ReadOnlyPaths=/data` made read-only, so `gcp-secret` failed and the server crash-looped 213 times. (2) `graphify extract` exits non-zero on a repo that yields an empty graph (static-UI, config-only or empty repos), and `set -e` turned that into aborting the whole run — one repo killed the refresh for all ~200, hourly. Per-repo failures are now skipped and counted, never fatal. |
 | 1-2     | 2026-08-27 | **Markdown is now indexed, with no LLM.** New helper `graphify-md-graph` calls graphify's own tokenless Markdown extractor, which the CLI never reaches (`.md` classifies as a *document*, and the AST pass runs over code files only). `graphify-refresh` gains a second pass per repo, merging doc nodes into the same `graph.json` before `global add`. A repo whose `extract` finds no code is no longer skipped — `build-docs` yields **63 nodes / 75 edges** from Markdown alone and was removed from `GRAPHIFY_EXCLUDE_REPOS`. The skip gate now counts nodes with `jq` instead of trusting `extract`'s exit code. Expect **one** extra MCP restart per code repo on the first warm run; the graph converges on run 2. The extractor is **vendored** (`graphify_md_extract.py`, Apache-2.0) rather than imported, because reaching graphify's own needs four private symbols — one of which failed silently when absent. `install-graphify.sh` now runs a drift check against a fixture at bake time, so a `GRAPHIFY_VERSION` bump that changes extraction **fails the image build**. |
+| 1-3     | 2026-08-31 | **No functional change — a rename only.** `graphify-boot.sh` is now `graphify-boot` in-tree, matching the name it has always had once installed, and it joins the `for helper` loop in `install-graphify.sh` instead of a separate `install` line that renamed it on the way in. Every helper in this flavor is now named in-tree exactly as it is installed; see CLAUDE.md, "Why some scripts have no `.sh`". Behaviourally identical to 1-2 — nothing about the data disk, the units or the graph changes, so rolling back to 1-2 is safe. |

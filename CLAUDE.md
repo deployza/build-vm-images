@@ -57,6 +57,20 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > its env file). Keep genuinely shared installers flat — this is for
 > single-flavor payloads, not a general reorganisation.
 
+> **Why some scripts have no `.sh`.** The extension tracks **how the file is
+> invoked**. Handed to an interpreter (`bash /tmp/scripts/install-basics.sh`) →
+> keep it. Installed to `/usr/local/bin` and invoked as a command → drop it, and
+> name the file in-tree exactly as it is installed. That is all seven graphify
+> helpers (`gcp-secret`, `graphify-serve`, `graphify-refresh`, `graphify-boot`,
+> …), each called by name from a systemd `ExecStart=` or from git's `GIT_ASKPASS`.
+> It also keeps the set honest: `graphify-md-graph` is **Python**, and `.py` is
+> reserved for `graphify_md_extract.py`, which really is an importable module.
+> The shebang carries the language for editors and for graphify's own indexer,
+> but a `**/*.sh` glob will skip these — **lint by shebang, not by extension**.
+> Known exception: `vm-startup.sh` keeps its extension on the target; it ships on
+> six flavors and has not been renamed. Upstream names (`gitea`, Tomcat's
+> `catalina.sh`/`setenv.sh`) are not ours to choose.
+
 > **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),

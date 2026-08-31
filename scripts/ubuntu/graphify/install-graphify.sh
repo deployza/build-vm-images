@@ -78,8 +78,11 @@ python3 -m venv /opt/graphify/venv
 mkdir -p /etc/graphify
 install -m 644 "$SCRIPT_DIR/graphify.env" /etc/graphify/graphify.env
 
+# Every one of these is invoked as a command — by a systemd unit, by git's
+# GIT_ASKPASS, or by another helper — so each is named in-tree exactly as it is
+# installed, with no extension. See CLAUDE.md, "Why some scripts have no .sh".
 for helper in gcp-secret graphify-serve graphify-refresh graphify-md-graph \
-              graphify-git-askpass graphify-log-failure; do
+              graphify-git-askpass graphify-log-failure graphify-boot; do
     install -m 755 "$SCRIPT_DIR/$helper" "/usr/local/bin/$helper"
 done
 
@@ -96,10 +99,6 @@ done
 #       /data/repos/<repo> --self-test
 install -m 644 "$SCRIPT_DIR/graphify_md_extract.py" \
     /usr/local/bin/graphify_md_extract.py
-
-# The per-instance boot script. Named without its .sh extension on the target,
-# matching the other helpers, since it is invoked as a command by its unit.
-install -m 755 "$SCRIPT_DIR/graphify-boot.sh" /usr/local/bin/graphify-boot
 
 # ---------------------------------------------------------------------------
 # The one privileged operation the refresh needs.
