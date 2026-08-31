@@ -121,7 +121,8 @@ setup_service_home() {
 # WHY THIS EXISTS. The boot disk is replaced wholesale by an image swap, but the
 # DATA disk survives — so a change to what the software indexes cannot, on its
 # own, reach state that is already on that disk. There is no SSH to this VM
-# (§7 of graphify-mcp.md), so "just go and delete the file" is not available.
+# (§7 of build-terraform/docs/graphify-mcp.md, sibling repo), so "just go and
+# delete the file" is not available.
 #
 # A migration is a named line in $MIGRATIONS. Adding a new one is: pick a name
 # that will never be reused, and put its body behind `if needs_migration <name>`.
