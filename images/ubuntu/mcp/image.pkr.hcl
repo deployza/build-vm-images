@@ -59,6 +59,15 @@ variable "graphify_version" {
   default = null
 }
 
+# FastMCP, the OAuth gateway in front of graphify. Labelled separately from
+# graphify_version because it is a second, independent upstream that sits in the
+# AUTHENTICATION path — when a login stops working, the first question is which of
+# the two moved.
+variable "fastmcp_version" {
+  type    = string
+  default = null
+}
+
 source "googlecompute" "mcp" {
   project_id              = var.project
   zone                    = var.zone
@@ -67,10 +76,11 @@ source "googlecompute" "mcp" {
   ssh_username            = "packer"
   image_name              = "mcp-${var.image_version}"
   image_family            = "mcp"
-  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} MCP server (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} MCP server behind a fastmcp ${var.fastmcp_version} OAuth gateway (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor   = "mcp"
     graphify = replace(var.graphify_version, ".", "-")
+    fastmcp  = replace(var.fastmcp_version, ".", "-")
     built    = "cloudbuild"
   }
 }
