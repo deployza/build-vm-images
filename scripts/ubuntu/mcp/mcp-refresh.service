@@ -7,8 +7,9 @@ Wants=network-online.target
 Requires=mcp-boot.service
 After=mcp-boot.service
 
-# The TCP health check cannot tell a current graph from a stale one, so a failed
-# refresh is the signal worth alerting on. See mcp-log-failure.
+# No liveness check can tell a current graph from a stale one — /healthz proves
+# both processes are up and nothing more — so a failed refresh is the signal worth
+# alerting on. See mcp-log-failure.
 OnFailure=mcp-refresh-failed.service
 
 [Service]

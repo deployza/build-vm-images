@@ -2,10 +2,12 @@
 # mcp-log-failure — write one ERROR entry to Cloud Logging when a refresh
 # run fails. OnFailure= target of mcp-refresh.service.
 #
-# WHY THIS EXISTS. The TCP health check on :8080 proves the port is open, not
-# that the graph loaded or that it is current — a server happily serving a
-# three-week-old graph looks perfectly healthy. The refresh failing is therefore
-# the signal that actually matters, and the most likely cause is mundane: GitHub
+# WHY THIS EXISTS. The load balancer's health check proves the processes are up,
+# not that the graph is CURRENT — it is an HTTP check on the gateway's /healthz,
+# which also probes graphify, but a server happily serving a three-week-old graph
+# still looks perfectly healthy. Staleness is invisible to any liveness check by
+# definition. The refresh failing is therefore the signal that actually matters,
+# and the most likely cause is mundane: GitHub
 # caps fine-grained PATs at one year, and when ours lapses every run starts
 # failing while the service keeps answering with a frozen graph.
 #
