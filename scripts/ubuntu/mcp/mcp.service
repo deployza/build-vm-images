@@ -1,5 +1,5 @@
 [Unit]
-Description=MCP code-knowledge-graph server, Streamable HTTP on :8080/mcp (graphify)
+Description=Deployza MCP code-knowledge-graph server, Streamable HTTP on 127.0.0.1:8081/mcp (graphify)
 Documentation=https://github.com/Graphify-Labs/graphify
 After=network-online.target
 Wants=network-online.target
@@ -43,6 +43,16 @@ ExecStart=/usr/local/bin/mcp-serve
 # ~2 s restart the refresh triggers when the graph changes.
 Restart=always
 RestartSec=30
+
+# Serving wins any CPU contention on the shared-core e2-micro, against
+# mcp-refresh.service's CPUWeight=20.
+#
+# THIS IS THE FIX FOR A MEASURED OUTAGE, not a precaution. On 2026-08-27 a full
+# 165-repo re-index exhausted the e2-micro's burst credits for 13.5 minutes; the
+# server stayed alive the whole time but was too starved to answer the load
+# balancer's health check, so the LB dropped it and mcp.deployza.com returned 000.
+# See build-terraform/docs/mcp.md §12. Under cgroup v2 this is one line per unit.
+CPUWeight=1000
 
 # The process reads two things (the graph, and the key from Secret Manager) and
 # writes nothing, so it gets a read-only view of the filesystem. ProtectHome is

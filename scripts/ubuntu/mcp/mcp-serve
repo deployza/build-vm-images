@@ -20,9 +20,16 @@ source /etc/mcp/mcp.env
 GRAPHIFY_API_KEY="$(/usr/local/bin/gcp-secret "$MCP_API_KEY_SECRET")"
 export GRAPHIFY_API_KEY
 
-# --stateless: every request is self-contained, so the load balancer never has to
-# pin a client to a session. --host 0.0.0.0 is mandatory; upstream defaults to
-# 127.0.0.1, where the load balancer cannot reach the process at all.
+# --stateless: every request is self-contained, so neither the load balancer nor the
+# gateway has to pin a client to a session. It is also what lets mcp-auth reuse one
+# upstream session instead of re-doing the MCP handshake on every call.
+#
+# --host WAS 0.0.0.0 AND IS NOT ANY MORE. This process used to be what the load
+# balancer talked to, so binding the wildcard was mandatory. The OAuth gateway now
+# holds :8080 and this listens on $MCP_BIND (127.0.0.1:8081), reachable only from
+# the gateway on the same box. Do not "fix" this back to 0.0.0.0 — it would
+# re-expose an endpoint whose only authentication is a static key that is now shared
+# with nobody and rotated by nobody.
 #
 # On a fresh VM the graph does not exist yet and this exits non-zero. That is
 # expected and handled: mcp.service carries Restart=always, so the unit
@@ -31,7 +38,7 @@ export GRAPHIFY_API_KEY
 exec "$MCP_VENV/bin/python" -m graphify.serve \
     --graph "$MCP_GRAPH" \
     --transport http \
-    --host 0.0.0.0 \
+    --host "$MCP_BIND" \
     --port "$MCP_PORT" \
     --path "$MCP_HTTP_PATH" \
     --stateless

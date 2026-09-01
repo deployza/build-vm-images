@@ -33,6 +33,7 @@ readonly DATA_MNT="/data"
 readonly SVC_USER="mcp"
 readonly SVC_HOME="/data/mcp"
 readonly REPOS_DIR="/data/repos"
+readonly AUTH_DIR="/data/mcp/auth"
 readonly SWAPFILE="/data/swapfile"
 readonly SWAP_SIZE="2G"
 # One line per applied migration. Now on the boot disk with the rest of /data, so
@@ -128,13 +129,25 @@ setup_swap() {
 # precisely so the directory is made here, at boot. `.graphify` is upstream's
 # hardcoded name and stays as it is.
 setup_service_home() {
-    mkdir -p "${SVC_HOME}/.graphify" "$REPOS_DIR"
+    mkdir -p "${SVC_HOME}/.graphify" "$REPOS_DIR" "$AUTH_DIR"
     chown -R "${SVC_USER}:${SVC_USER}" "$SVC_HOME" "$REPOS_DIR"
     chmod 750 "$SVC_HOME"
 
     # The clone tree must be writable by the service user: graphify writes
     # graphify-out/ INTO each scanned repo, not into the working directory.
     chmod 750 "$REPOS_DIR"
+
+    # The OAuth gateway's store: dynamic client registrations and the upstream
+    # Google tokens, encrypted at rest by FastMCP. 700, not 750 like the rest — no
+    # other account on this box has any business reading it. It is also why
+    # mcp-auth.service is the one unit with a ReadWritePaths= exception to
+    # ReadOnlyPaths=/data.
+    #
+    # ON THE BOOT DISK, like the rest of /data. An image swap therefore discards
+    # every registration and every issued token, and each developer logs in through
+    # the browser once more. That is a re-login, not data loss, and it is the
+    # accepted cost of the single-disk design — see mcp.md's disk section.
+    chmod 700 "$AUTH_DIR"
 }
 
 # =============================================================================
