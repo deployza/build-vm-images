@@ -71,10 +71,11 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > six flavors and has not been renamed. Upstream names (`gitea`, Tomcat's
 > `catalina.sh`/`setenv.sh`) are not ours to choose.
 
-> **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Eight flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
-> `mcp` (the code knowledge-graph MCP server — the only flavor with no Java).
+> `mcp` (the code knowledge-graph MCP server) and `nginx` (a lean, Tomcat-free
+> static web front door — `mcp` and `nginx` are the only flavors with no Java).
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -322,6 +323,14 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   ships an empty `/etc/nginx/app.d/` that the app deploy script writes into, the
   same way MySQL is baked without credentials. Do not add app-specific
   `location` blocks to `install-nginx.sh`.
+- `nginx` (family `nginx`): basic tools + nginx only, serving static content.
+  **No Java, no Tomcat, no MySQL** — for a VM that is a pure web front door
+  with no app server of its own. Uses its own installer,
+  `install-nginx-static.sh`, rather than `install-nginx.sh`: the latter bakes
+  a Tomcat upstream and a `proxy-to-tomcat.conf` snippet that would be dead
+  weight here. Same empty `/etc/nginx/app.d/` + `/nginx-health` seam and
+  README contract as `install-nginx.sh`, just without the Tomcat pieces. See
+  `images/ubuntu/nginx/nginx.md`.
 
 > **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/server.xml`
 > is upstream's file with two deliberate changes (no `AccessLogValve`; a
