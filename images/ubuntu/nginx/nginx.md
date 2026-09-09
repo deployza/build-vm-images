@@ -24,6 +24,9 @@ not a shared source.
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`
+- `install-mkdocs.sh` — Python + a venv at `/opt/mkdocs/venv` holding
+  `mkdocs` + `mkdocs-material` + `mkdocs-awesome-pages-plugin`, pinned to
+  match `www-apidocs/requirements.txt` exactly. See "MkDocs toolchain" below.
 - `install-vm-startup.sh` — the generic boot launcher (clones
   `build-app-install` and runs `vm/<APP_NAME>.sh` on every boot). Included
   here, unlike the `mcp` flavor: this flavor deploys the standard
@@ -31,6 +34,34 @@ not a shared source.
   (`git` + `curl`, both from `install-basics.sh`) have no Tomcat dependency.
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
+
+## MkDocs toolchain
+
+This image bakes **the toolchain only** — a venv with `mkdocs` and its two
+plugins installed — not a `www-apidocs` checkout, not a build, and no
+`mkdocs.yml`. That is deliberate: see
+[`../../../docs/apidocs-vm-build-plan.md`](../../../docs/apidocs-vm-build-plan.md)
+for the full design (`website-vm` clones `www-apidocs` from GitHub and runs
+`mkdocs build --strict` itself, on a systemd timer owned by
+`build-app-install`, instead of Cloud Build producing `site/` for the VM to
+pull from GCS).
+
+Baked at `/opt/mkdocs/venv` — same self-contained-venv pattern as the `mcp`
+flavor's graphify install (`install-mcp.sh`), for the same reason: Ubuntu's
+system Python is externally managed (PEP 668), so `pip install` outside a
+venv is refused outright, and baking avoids making PyPI's availability a
+boot-time dependency. Invoke it as `/opt/mkdocs/venv/bin/mkdocs build
+--strict` from inside a `www-apidocs` checkout.
+
+**Versions are pinned to match `www-apidocs/requirements.txt` exactly**
+(`MKDOCS_VERSION`, `MKDOCS_MATERIAL_VERSION`, `MKDOCS_AWESOME_PAGES_VERSION`
+in `versions.env`) — the VM must build with the same plugin versions as
+whoever last verified the site with `mkdocs serve` locally, or a page could
+pass `--strict` in one place and fail it in the other for a plugin-version
+reason invisible in the markdown itself. Bump both together, deliberately,
+same as any other pinned version in this repo — this is the one flavor asset
+that tracks a *different* repo's pin, so a `www-apidocs` requirements bump
+must be mirrored here (and vice versa) or the two drift silently.
 
 ## nginx configuration
 
@@ -158,3 +189,4 @@ Consumers launch with `--image-family=nginx --image-project=tools-tech-463909`.
 | Version | Date       | Change                        |
 | ------- | ---------- | ------------------------------ |
 | 1-0     | 2026-09-07 | Initial `nginx` image — basics + nginx serving static content, no Java/Tomcat/MySQL. Built for `www.deployza.com` (marketing site + `/docs/`). |
+| 1-1     | 2026-09-09 | Bake the MkDocs toolchain (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`) so `website-vm` can build `www-apidocs`' site itself at deploy time instead of pulling a pre-built `site/` from GCS. See `docs/apidocs-vm-build-plan.md`. |

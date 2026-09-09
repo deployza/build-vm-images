@@ -2,7 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _IMAGE_VERSION: '1-0'
+  _IMAGE_VERSION: '1-1'
 
 steps:
   - name: 'hashicorp/packer'
@@ -25,5 +25,6 @@ steps:
             -var=image_version=${_IMAGE_VERSION} \
             -var=git_sha=${COMMIT_SHA} \
             -var=nginx_version=$$NGINX_VERSION \
+            -var=mkdocs_version=$$MKDOCS_VERSION \
             images/ubuntu/nginx/image.pkr.hcl
         done

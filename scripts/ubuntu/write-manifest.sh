@@ -46,6 +46,19 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # mkdocs lives in a venv, not on PATH (nginx flavor only) — same reasoning
+  # as graphify below: the plugin set matters more than the bare version, and
+  # a plugin-version mismatch against www-apidocs/requirements.txt is
+  # otherwise invisible until `mkdocs build --strict` fails on the VM.
+  if [ -x /opt/mkdocs/venv/bin/mkdocs ]; then
+    echo "== mkdocs --version =="
+    /opt/mkdocs/venv/bin/mkdocs --version 2>&1 || true
+    echo
+    echo "== mkdocs venv packages =="
+    /opt/mkdocs/venv/bin/pip freeze 2>/dev/null || true
+    echo
+  fi
+
   # graphify lives in a venv, not on PATH, so probe the interpreter directly.
   # The pip freeze matters more than the version string: the tree-sitter grammar
   # set is what determines which repos index to anything, and it is invisible
