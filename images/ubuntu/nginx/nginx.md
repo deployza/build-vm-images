@@ -154,8 +154,8 @@ Run from the **repo root** (the build context must include `scripts/`):
 ```bash
 gcloud builds submit \
   --config images/ubuntu/nginx/cloudbuild.yaml \
-  --service-account=projects/tools-tech-463909/serviceAccounts/build-service-account@tools-tech-463909.iam.gserviceaccount.com \
-  --project=tools-tech-463909 \
+  --service-account=projects/dz-builds/serviceAccounts/build-service-account@dz-builds.iam.gserviceaccount.com \
+  --project=dz-builds \
   .
 ```
 
@@ -182,7 +182,7 @@ Image names are unique per project, so re-running with an unchanged
 — GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a
 new one. (The `nginx` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=nginx --image-project=tools-tech-463909`.
+Consumers launch with `--image-family=nginx --image-project=dz-builds`.
 
 ## Changelog
 

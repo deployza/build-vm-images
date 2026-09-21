@@ -37,7 +37,7 @@ Image names are unique per project, so re-running with an unchanged
 GCE never overwrites an existing image. Bump the version to publish a new one.
 (The `java` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=java --image-project=tools-tech-463909`.
+Consumers launch with `--image-family=java --image-project=dz-builds`.
 
 ## Changelog
 

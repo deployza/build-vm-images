@@ -107,8 +107,8 @@ These are self-contained — there is no build-time dependency on a sibling repo
   ```bash
   gcloud builds submit \
     --config images/ubuntu/<flavor>/cloudbuild.yaml \
-    --service-account=projects/tools-tech-463909/serviceAccounts/build-service-account@tools-tech-463909.iam.gserviceaccount.com \
-    --project=tools-tech-463909 \
+    --service-account=projects/dz-builds/serviceAccounts/build-service-account@dz-builds.iam.gserviceaccount.com \
+    --project=dz-builds \
     .
   ```
 
@@ -188,11 +188,11 @@ target GCP project. These are one-time, per-project steps.
 
    > **`$CB_SA` below is the LEGACY default and is no longer what runs a build.**
    > Cloud Build now uses the Compute Engine default SA unless a build names an
-   > identity. In `tools-tech-463909` the identity that actually matters is
-   > `build-service-account@tools-tech-463909.iam.gserviceaccount.com` — it is what
+   > identity. In `dz-builds` the identity that actually matters is
+   > `build-service-account@dz-builds.iam.gserviceaccount.com` — it is what
    > every trigger sets and what a hand-run submit must pass via
    > `--service-account` (see Conventions). It already holds these roles, granted
-   > in `build-terraform/bootstrap/tools_tech.tf`, so in this project step 2 is
+   > in `build-terraform/dz-builds/service-accounts.tf`, so in this project step 2 is
    > already done. The commands below remain correct for standing up a *new*
    > project; substitute the SA you intend builds to run as.
    ```bash

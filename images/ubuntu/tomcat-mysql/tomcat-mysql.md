@@ -33,7 +33,7 @@ Image names are unique per project, so re-running with an unchanged
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
 one. (The `tomcat-mysql` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=tomcat-mysql --image-project=tools-tech-463909`.
+Consumers launch with `--image-family=tomcat-mysql --image-project=dz-builds`.
 
 ## Changelog
 

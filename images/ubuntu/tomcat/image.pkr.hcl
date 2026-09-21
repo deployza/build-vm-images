@@ -24,7 +24,7 @@ variable "source_image_project_id" {
 # (previously in images/ubuntu/variables.pkr.hcl). Override with -var as needed.
 variable "project" {
   type    = string
-  default = "tools-tech-463909"
+  default = "dz-builds"
 }
 
 variable "zone" {
