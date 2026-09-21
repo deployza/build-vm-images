@@ -36,8 +36,8 @@ These are self-contained — there is no build-time dependency on a sibling repo
 
 > **Self-contained installers.** The installers (`install-basics.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-nginx.sh`, `install-mysql.sh`,
-> `write-manifest.sh`, `versions.env`, `setenv.sh`, `server.xml`,
-> `tomcat.service`) live under `scripts/<os>/`.
+> `install-python.sh`, `write-manifest.sh`, `versions.env`, `setenv.sh`,
+> `server.xml`, `tomcat.service`) live under `scripts/<os>/`.
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
@@ -71,11 +71,12 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > six flavors and has not been renamed. Upstream names (`gitea`, Tomcat's
 > `catalina.sh`/`setenv.sh`) are not ours to choose.
 
-> **Current state.** Eight flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Nine flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
-> `mcp` (the code knowledge-graph MCP server) and `nginx` (a lean, Tomcat-free
-> static web front door — `mcp` and `nginx` are the only flavors with no Java).
+> `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
+> static web front door) and `nginx-python` (that front door plus a CPython
+> runtime) — `mcp`, `nginx` and `nginx-python` are the flavors with no Java.
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -323,6 +324,22 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   ships an empty `/etc/nginx/app.d/` that the app deploy script writes into, the
   same way MySQL is baked without credentials. Do not add app-specific
   `location` blocks to `install-nginx.sh`.
+- `nginx-python` (family `nginx-python`): basic tools + nginx (static, via
+  `install-nginx-static.sh`) + CPython under `/opt/python/latest`, for a VM
+  serving a **Python** app behind nginx. The `nginx` flavor's Python-runtime
+  sibling: same installer set minus `install-mkdocs.sh` (that venv is
+  `www-apidocs`-specific), plus `install-python.sh`. **No WSGI server and no
+  routing are baked** — no gunicorn, no unit, no `proxy-to-python.conf`; the
+  app deploy script brings its own venv, its own service and its own
+  `/etc/nginx/app.d/<app>.conf`. Tomcat flavors bake an upstream because Tomcat
+  *is* the runtime; Python has no such single right answer.
+
+  **The one flavor that compiles its payload**, which is why it is also the one
+  that overrides the build defaults: `machine_type = "e2-standard-8"` and
+  `disk_size = 20` in its template, and `timeout: 3600s` in its
+  `cloudbuild.yaml` (Cloud Build's 10-minute default cannot fit a PGO+LTO
+  CPython build). Do not copy those overrides into a flavor that does not
+  compile. See `images/ubuntu/nginx-python/nginx-python.md`.
 - `nginx` (family `nginx`): basic tools + nginx only, serving static content.
   **No Java, no Tomcat, no MySQL** — for a VM that is a pure web front door
   with no app server of its own. Uses its own installer,
@@ -370,3 +387,24 @@ track `--image-family=tomcat` without ever chasing minor-version bumps.
 
 Each image runs `install-basics.sh` first, then the additional installer scripts
 required by that flavor, and finishes with `write-manifest.sh`.
+
+> **`install-python.sh` builds CPython from source, and that is not a stylistic
+> choice.** Every other installer prefers a package repo or a published binary,
+> and this one cannot: Ubuntu 24.04 has no 3.14 package at all, and the usual
+> backport (the deadsnakes PPA) publishes "latest 3.14.x" rather than a named
+> patch — an apt route would hand a *different* interpreter to each rebuild,
+> which is the one thing a pinned image may not do. So `PYTHON_VERSION` in
+> `versions.env` is a full `X.Y.Z` and the script compiles it, verifying at
+> bake time that what it built reports exactly that version.
+>
+> **Never repoint `/usr/bin/python3` at it.** The installer keeps the distro
+> interpreter as the system one (apt, unattended-upgrades and the gcloud CLI
+> from `install-basics.sh` all run against it), installs into the private
+> prefix `/opt/python/<version>` with a `/opt/python/latest` symlink — the same
+> `/opt/<tool>/latest` layout as `/opt/java/latest` — and adds only
+> **versioned** names (`python3.14`, `pip3.14`) to `/usr/local/bin`. A bare
+> `python3` there would sit ahead of `/usr/bin` for every root process and is
+> the classic way to leave a box unable to run apt. Unversioned names reach
+> login shells through `/etc/profile.d/python.sh` only, so a systemd unit that
+> wants this interpreter must name it (`python3.14`, or its venv's own
+> `bin/python`).
