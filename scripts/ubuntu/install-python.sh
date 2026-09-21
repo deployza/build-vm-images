@@ -2,6 +2,16 @@
 # Install CPython under /opt/python/<version> and symlink /opt/python/latest,
 # mirroring install-java.sh's /opt/<tool>/latest layout.
 #
+# CALLED BY install-basics.sh, SO THIS RUNS ON EVERY FLAVOR. It is not a
+# per-flavor opt-in: Python is baseline fleet-wide. It stays a separate file
+# because it is long, because it is the only part of basics that builds from
+# source, and so it remains runnable on its own against a live VM.
+#
+# It is also why every template carries machine_type = "e2-standard-8" and
+# disk_size = 20, and every cloudbuild.yaml a timeout of 3600s -- the compile
+# below does not fit Cloud Build's 10-minute default. A new flavor that omits
+# those three will fail its first bake on the clock.
+#
 # BUILT FROM SOURCE, ON PURPOSE. The other installers prefer a package repo
 # (nginx.org, Ubuntu's own) or a published binary (JDK, Gitea) and this one
 # cannot: Ubuntu 24.04 ships Python 3.12 and carries no 3.14 package at all,

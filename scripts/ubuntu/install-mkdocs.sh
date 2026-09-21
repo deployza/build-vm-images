@@ -28,9 +28,13 @@ source "$SCRIPT_DIR/versions.env"
 
 export DEBIAN_FRONTEND=noninteractive
 
-# python3 is already in the Ubuntu base image; python3-venv is not, and
-# Ubuntu's system Python is externally managed (PEP 668) so a bare `pip
-# install` is refused outright — same reasoning as install-mcp.sh's venv.
+# python3 + python3-venv both come from install-basics.sh now, so this is
+# redundant in every flavor that runs it first. Kept anyway, the same way
+# install-nginx-static.sh re-installs its own gnupg2/lsb-release: an
+# installer must stand on its own if the flavor's ordering ever changes.
+# The venv itself is not optional - Ubuntu's system Python is externally
+# managed (PEP 668), so a bare `pip install` against it is refused
+# outright; same reasoning as install-mcp.sh's venv.
 apt-get update -y
 apt-get install -y python3 python3-venv
 rm -rf /var/lib/apt/lists/*

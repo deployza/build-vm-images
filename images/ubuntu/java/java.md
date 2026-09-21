@@ -7,7 +7,9 @@ launchers). For a web app server use [`tomcat`](../tomcat/) instead.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI
+- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-java.sh` — JDK under `/opt/java`, symlinked `/opt/java/latest`
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).

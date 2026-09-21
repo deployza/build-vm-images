@@ -20,7 +20,9 @@ not a shared source.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI
+- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`

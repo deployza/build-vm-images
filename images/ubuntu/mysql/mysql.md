@@ -10,7 +10,9 @@ image.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI
+- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-mysql.sh` — `mysql-server` + `mysql-client` from Ubuntu's own apt
   repo (distro 8.0.x, not `dev.mysql.com`), `mysql` systemd service
 

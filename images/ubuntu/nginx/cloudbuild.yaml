@@ -1,6 +1,13 @@
 options:
   logging: CLOUD_LOGGING_ONLY
 
+# install-basics.sh compiles CPython with PGO+LTO on every flavor, which does
+# not fit Cloud Build's 10-minute default timeout even on the 8-vCPU bake VM
+# image.pkr.hcl asks for. 1h is generous on purpose: a timeout kills the build
+# mid-bake and leaves the temporary Packer VM behind, which is a worse failure
+# than a slow build.
+timeout: 3600s
+
 substitutions:
   _IMAGE_VERSION: '1-1'
 

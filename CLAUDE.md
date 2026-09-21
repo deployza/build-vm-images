@@ -243,17 +243,21 @@ Example structure:
 build-vm-images/
   scripts/
     ubuntu/                   # toolchain installers for Ubuntu, owned by this repo
-      install-basics.sh
+      install-basics.sh       # apt basics + gcloud + python (calls install-python.sh)
+      install-python.sh       # pinned CPython, compiled; run by install-basics.sh
       install-java.sh
       install-tomcat.sh
       install-nginx.sh
       nginx-tomcat.sh         # enables Tomcat's RemoteIpValve; its own provisioner step
       install-mysql.sh
+      install-otel.sh         # OpenTelemetry Collector, INERT (every flavor)
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
       versions.env            # single source for pinned versions
       setenv.sh
       server.xml              # repo-owned Tomcat conf/server.xml (see below)
       tomcat.service
+      otelcol.service         # collector unit (not a template, unlike tomcat.service)
+      otelcol-base.yaml       # the inert nop config baked as /etc/otelcol/config.yaml
   images/
     ubuntu/
       java/
@@ -301,6 +305,31 @@ A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
   to `/tmp/scripts/` (a `mkdir -p /tmp/scripts` shell step runs first so the
   trailing-slash contents copy has a target).
 
+### Telemetry: baked but inert
+
+`install-otel.sh` runs on **every** flavor and installs the OpenTelemetry
+Collector (contrib) plus `otelcol.service`, with `otelcol-base.yaml` baked as
+`/etc/otelcol/config.yaml`. That base config is a `nop` pipeline: the service is
+running and healthy but **reads nothing and exports nowhere**.
+
+Real configuration is **pushed** to a running VM over SSH from
+`build-app-install/otel/`, which swaps `config.yaml` and restarts the service.
+Nothing on the VM clones, pulls or polls for it, and no collector config belongs
+in this repo beyond the inert base.
+
+Two things to know before touching it:
+
+- **`OTELCOL_SHA256` in `versions.env` is intentionally empty**, so the bake
+  fails until someone sets it from the pinned release's checksums. Same
+  principle as the null `image_version` / `git_sha` defaults in every template:
+  a missing value must fail, not bake a placeholder. `OTELCOL_VERSION` likewise
+  needs checking before the first bake.
+- **The `otelcol` user is created with no supplementary groups.** Which groups
+  it needs (`adm`, `tomcat`) depends on what the VM runs, which is a push-time
+  decision. Do not add them here.
+
+Full design and reasoning: `../build-docs/ops-execution.md`.
+
 ### Image composition guidance
 
 Each `images/<os>/<flavor>/` folder produces one image **family**. The flavor folder
@@ -325,21 +354,17 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   same way MySQL is baked without credentials. Do not add app-specific
   `location` blocks to `install-nginx.sh`.
 - `nginx-python` (family `nginx-python`): basic tools + nginx (static, via
-  `install-nginx-static.sh`) + CPython under `/opt/python/latest`, for a VM
-  serving a **Python** app behind nginx. The `nginx` flavor's Python-runtime
-  sibling: same installer set minus `install-mkdocs.sh` (that venv is
-  `www-apidocs`-specific), plus `install-python.sh`. **No WSGI server and no
-  routing are baked** — no gunicorn, no unit, no `proxy-to-python.conf`; the
-  app deploy script brings its own venv, its own service and its own
-  `/etc/nginx/app.d/<app>.conf`. Tomcat flavors bake an upstream because Tomcat
-  *is* the runtime; Python has no such single right answer.
-
-  **The one flavor that compiles its payload**, which is why it is also the one
-  that overrides the build defaults: `machine_type = "e2-standard-8"` and
-  `disk_size = 20` in its template, and `timeout: 3600s` in its
-  `cloudbuild.yaml` (Cloud Build's 10-minute default cannot fit a PGO+LTO
-  CPython build). Do not copy those overrides into a flavor that does not
-  compile. See `images/ubuntu/nginx-python/nginx-python.md`.
+  `install-nginx-static.sh`), for a VM serving a **Python** app behind nginx.
+  Note what actually distinguishes it: **not** the interpreter (every flavor
+  has the pinned CPython — see the Python note at the end of this section),
+  but the *absence* of `install-mkdocs.sh`. It is the `nginx` flavor without
+  that venv, which is a `www-apidocs` build dependency and dead weight on an
+  ordinary Python app box. The name is kept because it says what the box is
+  for. **No WSGI server and no routing are baked** — no gunicorn, no unit, no
+  `proxy-to-python.conf`; the app deploy script brings its own venv, its own
+  service and its own `/etc/nginx/app.d/<app>.conf`. Tomcat flavors bake an
+  upstream because Tomcat *is* the runtime; Python has no such single right
+  answer. See `images/ubuntu/nginx-python/nginx-python.md`.
 - `nginx` (family `nginx`): basic tools + nginx only, serving static content.
   **No Java, no Tomcat, no MySQL** — for a VM that is a pure web front door
   with no app server of its own. Uses its own installer,
@@ -388,23 +413,45 @@ track `--image-family=tomcat` without ever chasing minor-version bumps.
 Each image runs `install-basics.sh` first, then the additional installer scripts
 required by that flavor, and finishes with `write-manifest.sh`.
 
-> **`install-python.sh` builds CPython from source, and that is not a stylistic
-> choice.** Every other installer prefers a package repo or a published binary,
-> and this one cannot: Ubuntu 24.04 has no 3.14 package at all, and the usual
-> backport (the deadsnakes PPA) publishes "latest 3.14.x" rather than a named
-> patch — an apt route would hand a *different* interpreter to each rebuild,
-> which is the one thing a pinned image may not do. So `PYTHON_VERSION` in
-> `versions.env` is a full `X.Y.Z` and the script compiles it, verifying at
-> bake time that what it built reports exactly that version.
+> **Python is baseline on every flavor, and it costs every bake 10-20
+> minutes.** `install-basics.sh` — which every flavor runs first — installs the
+> distro's `python3`/`python3-venv`/`python3-pip` AND then calls
+> `install-python.sh`, which **compiles** the pinned CPython from source into
+> `/opt/python/<version>` (symlink `/opt/python/latest`, the same
+> `/opt/<tool>/latest` layout as `/opt/java/latest`).
 >
-> **Never repoint `/usr/bin/python3` at it.** The installer keeps the distro
-> interpreter as the system one (apt, unattended-upgrades and the gcloud CLI
-> from `install-basics.sh` all run against it), installs into the private
-> prefix `/opt/python/<version>` with a `/opt/python/latest` symlink — the same
-> `/opt/<tool>/latest` layout as `/opt/java/latest` — and adds only
-> **versioned** names (`python3.14`, `pip3.14`) to `/usr/local/bin`. A bare
-> `python3` there would sit ahead of `/usr/bin` for every root process and is
-> the classic way to leave a box unable to run apt. Unversioned names reach
-> login shells through `/etc/profile.d/python.sh` only, so a systemd unit that
-> wants this interpreter must name it (`python3.14`, or its venv's own
-> `bin/python`).
+> Source-built because there is no alternative that stays pinned: Ubuntu 24.04
+> has no 3.14 package at all, and the usual backport (the deadsnakes PPA)
+> publishes "latest 3.14.x" rather than a named patch, so an apt route would
+> hand a *different* interpreter to each rebuild. `PYTHON_VERSION` in
+> `versions.env` is therefore a full `X.Y.Z`, and the script verifies at bake
+> time that what it built reports exactly that.
+>
+> **Consequence for every flavor, including a new one you add:** the PGO+LTO
+> build needs `machine_type = "e2-standard-8"` and `disk_size = 20` in the
+> template, and `timeout: 3600s` in `cloudbuild.yaml` — Cloud Build's
+> 10-minute default cannot fit it, and a timeout strands the temp Packer VM.
+> All nine flavors carry all three. **Copy them into any new flavor** or its
+> first bake fails on the clock, in a way that looks nothing like a Python
+> problem.
+>
+> The cheaper alternatives were considered and rejected: keeping the compile
+> opt-in per flavor, and publishing a prebuilt tarball to
+> `${FILES_BASE_URL}/installables/` the way the JDK is shipped. The tarball
+> route is the one to revisit if bake time becomes painful — it would return
+> every flavor to a seconds-long install, at the price of a manual
+> build-and-upload step on each Python bump.
+>
+> **Never repoint `/usr/bin/python3` at it.** The distro interpreter stays the
+> system one — apt, unattended-upgrades and the gcloud CLI all run against it —
+> so `install-python.sh` uses a private prefix and adds only **versioned**
+> names (`python3.14`, `pip3.14`) to `/usr/local/bin`. A bare `python3` there
+> would sit ahead of `/usr/bin` for every root process and is the classic way
+> to leave a box unable to run apt. Unversioned names reach login shells
+> through `/etc/profile.d/python.sh` only, so a systemd unit that wants this
+> interpreter must name it (`python3.14`, or its venv's own `bin/python`).
+>
+> **Python is not an image label.** Labels carry what distinguishes a flavor,
+> and baseline tools from `install-basics.sh` (gcloud, git, curl) have never
+> been labelled. `nginx-python` is the single exception, because it is named
+> after it. The version is in `/etc/image-manifest.txt` on every image.

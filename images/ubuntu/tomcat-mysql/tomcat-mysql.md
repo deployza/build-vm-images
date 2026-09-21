@@ -11,7 +11,9 @@ deploy step provisions credentials and databases.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI
+- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — `tomcat` user (home `/home/tomcat`), Tomcat at
   `/home/tomcat/instance`, `tomcat` systemd service

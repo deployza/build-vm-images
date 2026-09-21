@@ -61,6 +61,18 @@ source "googlecompute" "mysql" {
   source_image_family     = var.source_image_family
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
+
+  # BAKE VM SIZE AND DISK ARE SET BY install-basics.sh, WHICH COMPILES CPYTHON
+  # (PGO+LTO) ON EVERY FLAVOR -- see that script's header. Bake time there is
+  # almost entirely parallel `make`, so it tracks the bake VM's core count:
+  # on googlecompute's e2-standard-2 default it runs well over half an hour,
+  # on 8 vCPUs it is minutes. The disk must hold the base image,
+  # build-essential and a full CPython source tree with its object files at
+  # once, which 10GB does not do comfortably. This VM exists only for the bake.
+  # Keep these in step with cloudbuild.yaml's `timeout`, not instead of it.
+  machine_type = "e2-standard-8"
+  disk_size    = 20
+
   image_name              = "mysql-${var.image_version}"
   image_family            = "mysql"
   image_description       = "${var.source_image_family} + MySQL ${var.mysql_version} daemon (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
@@ -93,6 +105,7 @@ build {
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-mysql.sh",
       "bash /tmp/scripts/install-vm-startup.sh",
+      "bash /tmp/scripts/install-otel.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

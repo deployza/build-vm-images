@@ -1,0 +1,54 @@
+# INERT BASE CONFIG — baked into every image by install-otel.sh as
+# /etc/otelcol/config.yaml.
+#
+# THIS FILE COLLECTS NOTHING AND SENDS NOTHING ANYWHERE. It exists so that a
+# freshly created VM has a collector that is running, healthy and silent, before
+# anything has been pushed to it. That is the "inert by default" guarantee in
+# ../../../build-docs/ops-execution.md.
+#
+# WHY A nop PIPELINE AND NOT AN EMPTY service BLOCK: the collector refuses to
+# start with no pipelines at all ("service must have at least one pipeline"). An
+# empty config is therefore a DEAD service, not an idle one — and a dead
+# collector looks exactly like a healthy one that has nothing to report.
+#
+# This file is REPLACED WHOLE by build-app-install/otel/apply.sh when a real
+# config is pushed. Do not add anything here that a pushed config would need to
+# preserve: nothing merges, the file is swapped.
+
+extensions:
+  # The health check apply.sh uses to decide whether a pushed config actually
+  # came up, and whether to roll back. EVERY pushed config must also declare
+  # this extension on the same endpoint, or apply.sh will roll back a perfectly
+  # good config because it cannot confirm it.
+  #
+  # Bound to loopback on purpose: this is an operator signal reached over the
+  # SSH session that pushed the config, not a service to expose. The IAP SSH
+  # firewall rules open :22 only, so a non-loopback bind would be unreachable
+  # anyway — but binding it explicitly keeps that a decision rather than an
+  # accident of the firewall.
+  health_check:
+    endpoint: 127.0.0.1:13133
+
+receivers:
+  nop:
+
+exporters:
+  nop:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    # One nop pipeline, satisfying the "at least one pipeline" requirement while
+    # reading no source and writing to no destination.
+    logs:
+      receivers: [nop]
+      exporters: [nop]
+
+  telemetry:
+    logs:
+      # The collector's OWN logs go to stderr, which systemd captures into the
+      # journal under the otelcol unit:
+      #   sudo journalctl -u otelcol.service -b
+      # This is where an EACCES on a log source shows up — the one time, at
+      # startup, that it is ever mentioned.
+      level: info

@@ -1,0 +1,68 @@
+# OpenTelemetry Collector (contrib). Installed verbatim by install-otel.sh —
+# unlike tomcat.service this is NOT a template and has no @PLACEHOLDER@ to
+# substitute; every path here is fixed by that script.
+[Unit]
+Description=OpenTelemetry Collector (contrib)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=otelcol
+Group=otelcol
+
+# Type=simple, not forking: the collector runs in the foreground and systemd
+# tracks it directly.
+Type=simple
+ExecStart=/opt/otelcol/bin/otelcol-contrib --config=/etc/otelcol/config.yaml
+
+# Exporter endpoint and credentials, written by build-app-install/otel/apply.sh
+# and referenced from the config as ${env:OTEL_*}. Leading "-" so the unit still
+# starts when the file is absent, which is the state of every freshly baked
+# image: the inert base config reads no environment at all.
+#
+# SECRETS LIVE HERE, NOT IN THE CONFIG. config.yaml is world-readable enough to
+# be worth keeping boring; /etc/otelcol/env is 640 root:otelcol. Keeping the two
+# apart also means a pushed config can be diffed and pasted into a ticket
+# without leaking an API key.
+EnvironmentFile=-/etc/otelcol/env
+
+# THERE IS NO ExecReload. The collector does not reliably reload its config on
+# SIGHUP, so build-app-install/otel/apply.sh RESTARTS the service after swapping
+# the config and then health-checks it. Adding a reload here would give apply.sh
+# a way to silently do nothing.
+
+Restart=always
+RestartSec=10
+
+# Do not thrash if a pushed config is broken in a way that crashes on startup:
+# five failures inside a minute and systemd gives up, leaving a clean failed
+# state for apply.sh's health check to detect rather than a restart loop that
+# looks alive.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# --- Hardening ----------------------------------------------------------------
+# This process reads application logs across the box and holds exporter
+# credentials, so it is worth confining. It needs to READ log files (granted per
+# VM via supplementary groups, added by apply.sh) and to make outbound network
+# connections. It needs to write nothing.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+# No capabilities at all. Read access to log sources comes from group
+# membership, not from CAP_DAC_READ_SEARCH — the capability would grant read on
+# every file on the host, where a group grants exactly the log dirs intended.
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

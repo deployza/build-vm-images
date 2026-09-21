@@ -12,7 +12,9 @@ live in the image.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI (also installs `git`)
+- `install-basics.sh` — apt basics + gcloud CLI (also installs `git`) + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-gitea.sh` — sqlite3, the `git` system user, the pinned Gitea binary,
   the Gitea directory layout, and the `gitea` systemd service
 - `gitea.service` — systemd unit for Gitea

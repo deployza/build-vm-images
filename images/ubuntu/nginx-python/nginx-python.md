@@ -5,19 +5,24 @@ GCE image family **`nginx-python`**: Ubuntu + basic tools + gcloud CLI + nginx
 Java, no Tomcat, no MySQL — the web front door for a VM that runs a **Python**
 application behind nginx.
 
-This is the [`nginx`](../nginx/nginx.md) flavor's Python-runtime sibling. It
-reuses that flavor's installer set verbatim, drops `install-mkdocs.sh` (the
-MkDocs venv is `www-apidocs`-specific and has nothing to do with a general
-Python runtime) and adds `install-python.sh`.
+> **What actually distinguishes this flavor is not Python.** The pinned
+> CPython is installed by `install-basics.sh` on **every** flavor in the repo,
+> so `tomcat` and `mysql` have 3.14.7 too. Precisely, this is the
+> [`nginx`](../nginx/nginx.md) flavor **without `install-mkdocs.sh`** — that
+> venv is a `www-apidocs` build dependency and dead weight on a box running an
+> ordinary Python app. The name is kept because it says what the box is for,
+> and this is the one flavor that carries the Python version as an image
+> label. If the MkDocs venv does not bother you, the `nginx` family already
+> serves the same purpose.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI
+- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`, empty `/etc/nginx/app.d/` routing seam
-- `install-python.sh` — CPython built from source into `/opt/python/3.14.7`,
-  symlinked `/opt/python/latest`. See "The Python runtime" below.
 - `install-vm-startup.sh` — the generic boot launcher (clones
   `build-app-install` and runs `vm/<APP_NAME>.sh` on every boot)
 
@@ -49,13 +54,20 @@ app. See `/etc/nginx/app.d/README` on a running VM for the routing contract.
 
 ## The Python runtime
 
+Everything in this section is **fleet-wide**, not specific to this flavor — it
+is `install-basics.sh`'s behaviour, documented here because this is the flavor
+named after it.
+
 **Built from source, not from apt.** Ubuntu 24.04 ships Python 3.12 and has no
 3.14 package; the usual backport (the deadsnakes PPA) publishes "latest
 3.14.x", so an apt-based image would quietly acquire a different interpreter on
 each rebuild — the opposite of a pinned image. python.org's source tarball is
 the only official artifact for a named patch release, so `PYTHON_VERSION` is a
-full `X.Y.Z` and `install-python.sh` compiles it. `install-python.sh` verifies
-at bake time that what it built reports exactly that version.
+full `X.Y.Z` and `install-python.sh` compiles it, verifying at bake time that
+what it built reports exactly that version.
+
+`install-basics.sh` also installs the distro's `python3-venv` and
+`python3-pip`, so the system interpreter is usable for scripting on its own.
 
 **The system Python is untouched.** `/usr/bin/python3` remains Ubuntu's 3.12
 and still serves apt, unattended-upgrades and the gcloud CLI. `install-python.sh`
@@ -94,8 +106,8 @@ an app failed on a live VM.
 
 ## Build time and bake machine
 
-This is the only flavor that **compiles** its payload, and it is the only one
-that needed the build defaults changed:
+**Every** flavor compiles CPython now, so all nine carry the same three
+overrides — they are not specific to this one:
 
 - `machine_type = "e2-standard-8"` in `image.pkr.hcl`. A PGO + LTO CPython
   build is almost entirely parallel `make`, so bake time is set by the bake
@@ -110,7 +122,14 @@ that needed the build defaults changed:
   generous rather than tight.
 
 PGO/LTO is kept despite the cost: it is paid once per image and recovered on
-every VM the image boots.
+every VM the image boots. **A new flavor must copy all three settings** or its
+first bake dies on the Cloud Build clock, in a way that looks nothing like a
+Python problem.
+
+If fleet-wide bake time becomes painful, the escape hatch is to compile 3.14.z
+once, publish the result to `${FILES_BASE_URL}/installables/` the way the JDK
+tarball is shipped, and have `install-python.sh` untar it — seconds per bake,
+at the price of a manual build-and-upload step on every Python bump.
 
 ## Build
 

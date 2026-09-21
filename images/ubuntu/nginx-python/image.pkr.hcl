@@ -1,7 +1,13 @@
-# nginx-python flavor: basics + nginx (systemd, static) + CPython under
-# /opt/python. No Java, no Tomcat, no MySQL, and no MkDocs venv — the `nginx`
-# flavor's Python-runtime sibling, for a VM that serves a Python application
-# behind nginx rather than a docs bundle.
+# nginx-python flavor: basics + nginx (systemd, static). No Java, no Tomcat,
+# no MySQL, and no MkDocs venv.
+#
+# NOTE ON THE NAME. CPython under /opt/python is NOT what distinguishes this
+# flavor — install-basics.sh bakes the pinned interpreter into every flavor in
+# the repo, so `tomcat` and `mysql` have it too. What this flavor is, precisely,
+# is the `nginx` flavor WITHOUT install-mkdocs.sh: that venv is a www-apidocs
+# build dependency, dead weight on a box running an ordinary Python app. The
+# name is kept because it says what the box is for, and because it is the one
+# flavor where the Python version is worth carrying as an image label.
 # Family: nginx-python.
 packer {
   required_plugins {
@@ -59,6 +65,11 @@ variable "nginx_version" {
   default = null
 }
 
+# Every flavor now installs this same interpreter (install-basics.sh), and the
+# others deliberately do NOT label it — labels carry what distinguishes a
+# flavor, and baseline tools from install-basics.sh (gcloud, git, curl) have
+# never been labelled. It is labelled here, and only here, because this is the
+# flavor named after it. The version is in /etc/image-manifest.txt everywhere.
 variable "python_version" {
   type    = string
   default = null
@@ -71,17 +82,16 @@ source "googlecompute" "nginx-python" {
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
 
-  # The one flavor that COMPILES its payload. install-python.sh runs a PGO+LTO
-  # CPython build, which is almost entirely parallel `make`, so the bake VM's
-  # core count is the whole bake time: on the googlecompute default
-  # (e2-standard-2) it runs well over half an hour, on 8 vCPUs it is minutes.
-  # This machine exists only for the duration of the bake. Raise
-  # cloudbuild.yaml's `timeout` with it, not instead of it.
+  # BAKE VM SIZE AND DISK ARE SET BY install-basics.sh, WHICH COMPILES CPYTHON
+  # (PGO+LTO) ON EVERY FLAVOR -- see that script's header. Bake time there is
+  # almost entirely parallel `make`, so it tracks the bake VM's core count:
+  # on googlecompute's e2-standard-2 default it runs well over half an hour,
+  # on 8 vCPUs it is minutes. The disk must hold the base image,
+  # build-essential and a full CPython source tree with its object files at
+  # once, which 10GB does not do comfortably. This VM exists only for the bake.
+  # Keep these in step with cloudbuild.yaml's `timeout`, not instead of it.
   machine_type = "e2-standard-8"
-
-  # The default 10GB boot disk holds the base image, the apt build-essential
-  # toolchain and a full CPython source tree plus its object files at once.
-  disk_size = 20
+  disk_size    = 20
 
   image_name        = "nginx-python-${var.image_version}"
   image_family      = "nginx-python"
@@ -106,14 +116,12 @@ build {
     destination = "/tmp/scripts/"
   }
 
-  # Same installer set as the `nginx` flavor minus install-mkdocs.sh, plus
-  # install-python.sh. install-vm-startup.sh is included for the same reason it
-  # is there: this flavor deploys the generic GCS-artifact/APP_NAME+APP_ENV way,
-  # and the launcher's own requirements (git + curl, from install-basics.sh)
-  # have no Tomcat dependency.
-  #
-  # nginx is installed BEFORE python only so a failed nginx config fails the
-  # bake before the long compile, not after it; the two are independent.
+  # Exactly the `nginx` flavor's installer set, minus install-mkdocs.sh. There
+  # is no install-python.sh line: it is not optional per-flavor any more,
+  # install-basics.sh calls it directly. install-vm-startup.sh is included for
+  # the same reason it is on `nginx`: this flavor deploys the generic
+  # GCS-artifact/APP_NAME+APP_ENV way, and the launcher's own requirements
+  # (git + curl, from install-basics.sh) have no Tomcat dependency.
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
@@ -123,8 +131,8 @@ build {
     inline = [
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-nginx-static.sh",
-      "bash /tmp/scripts/install-python.sh",
       "bash /tmp/scripts/install-vm-startup.sh",
+      "bash /tmp/scripts/install-otel.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

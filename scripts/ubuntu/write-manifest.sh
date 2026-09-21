@@ -87,6 +87,20 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # The collector is baked on every flavor but is INERT until a config is
+  # pushed, so record both the version and which config is live. "is this box
+  # actually shipping telemetry, and to where" is otherwise invisible: a
+  # collector with the baked nop config looks identical, from the outside, to
+  # one that is healthy and exporting.
+  if [ -x /opt/otelcol/bin/otelcol-contrib ]; then
+    echo "== otelcol-contrib --version =="
+    /opt/otelcol/bin/otelcol-contrib --version 2>&1 || true
+    echo
+    echo "== otelcol config (first line identifies base vs pushed) =="
+    head -n 1 /etc/otelcol/config.yaml 2>/dev/null || true
+    echo
+  fi
+
   echo "== dpkg packages =="
   dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null | sort
 } > "$MANIFEST"

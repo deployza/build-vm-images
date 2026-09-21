@@ -91,7 +91,9 @@ Tomcat. graphify has no WAR, no `conf/` and no Tomcat.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI (also installs `git` and `jq`)
+- `install-basics.sh` — apt basics + gcloud CLI (also installs `git` and `jq`) + Python (distro `python3`/venv/pip, and the pinned
+  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
+  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `mcp/install-mcp.sh` — `python3-venv`, the `mcp` system user, the
   venv, the helper binaries, the sudoers drop-in, and the four systemd units
 - `mcp/mcp.env` — all tunables, baked to `/etc/mcp/mcp.env`
