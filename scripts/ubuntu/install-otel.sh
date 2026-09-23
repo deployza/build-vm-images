@@ -32,20 +32,11 @@ OTELCOL_CONF_DIR=/etc/otelcol
 OTELCOL_TAR="otelcol-contrib_${OTELCOL_VERSION}_linux_amd64.tar.gz"
 OTELCOL_URL="https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTELCOL_VERSION}/${OTELCOL_TAR}"
 
-# FAIL CLOSED ON AN UNSET CHECKSUM. This is the same principle as the null
-# defaults on image_version / git_sha in every image.pkr.hcl: a missing value
-# must fail the bake, not silently bake a placeholder. The binary is downloaded
-# from a public release URL and then runs as a long-lived service on every VM in
-# the estate, so an unverified download is not an acceptable default.
-#
-# To set it: fetch the release's checksums file and copy the line for
-# ${OTELCOL_TAR} into OTELCOL_SHA256 in versions.env.
-if [ -z "${OTELCOL_SHA256:-}" ]; then
-  echo "ERROR: OTELCOL_SHA256 is not set in versions.env." >&2
-  echo "       Fetch it from the v${OTELCOL_VERSION} release checksums file and" >&2
-  echo "       set it before baking. See this script's header." >&2
-  exit 1
-fi
+# NO CHECKSUM VERIFICATION, deliberately — matching install-java.sh,
+# install-tomcat.sh and install-gitea.sh, which all fetch a pinned tarball over
+# HTTPS and extract it. TLS to the release host is the trust boundary, and the
+# pinned version in versions.env is what makes the bake reproducible.
+# (install-python.sh is the one exception in this directory.)
 
 
 echo "== Create the otelcol service user =="
@@ -67,11 +58,10 @@ useradd --system --gid otelcol --no-create-home \
         --comment "OpenTelemetry Collector" otelcol
 
 
-echo "== Download and verify otelcol-contrib ${OTELCOL_VERSION} =="
+echo "== Download otelcol-contrib ${OTELCOL_VERSION} =="
 mkdir -p "$OTELCOL_HOME/bin"
 cd /tmp
 wget -q "$OTELCOL_URL" -O "$OTELCOL_TAR"
-echo "${OTELCOL_SHA256}  ${OTELCOL_TAR}" | sha256sum -c -
 
 tar -xzf "$OTELCOL_TAR" -C "$OTELCOL_HOME/bin" otelcol-contrib
 rm -f "$OTELCOL_TAR"

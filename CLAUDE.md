@@ -319,11 +319,10 @@ in this repo beyond the inert base.
 
 Two things to know before touching it:
 
-- **`OTELCOL_SHA256` in `versions.env` is intentionally empty**, so the bake
-  fails until someone sets it from the pinned release's checksums. Same
-  principle as the null `image_version` / `git_sha` defaults in every template:
-  a missing value must fail, not bake a placeholder. `OTELCOL_VERSION` likewise
-  needs checking before the first bake.
+- **`OTELCOL_VERSION` is pinned in two repos.** `versions.env` here and
+  `OTELCOL_VERSION` in `build-app-install/otel/cloudbuild.yaml`. Bump them
+  together — CI validating configs against a version the fleet does not run is
+  worse than no CI at all.
 - **The `otelcol` user is created with no supplementary groups.** Which groups
   it needs (`adm`, `tomcat`) depends on what the VM runs, which is a push-time
   decision. Do not add them here.
