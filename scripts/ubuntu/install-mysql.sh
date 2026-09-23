@@ -8,7 +8,7 @@
 # The server is installed with no root password set and left enabled; the
 # build-time start is harmless — the boot-time deploy script configures the
 # actual root password / app database and (re)starts the service. See
-# build-design.md §3.
+# build-system.md §3.
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

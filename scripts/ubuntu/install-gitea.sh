@@ -7,7 +7,7 @@
 # binary, and the systemd unit. Gitea is left enabled but NOT first-run
 # configured — there is no baked app.ini, so the boot-time deploy step writes
 # /etc/gitea/app.ini and completes install (admin user, DB, secrets never live
-# in the image). See build-design.md §3.
+# in the image). See build-system.md §3.
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,7 +32,7 @@ curl -fsSL "https://dl.gitea.com/gitea/${GITEA_VERSION}/gitea-${GITEA_VERSION}-l
     -o /usr/local/bin/gitea
 chmod 755 /usr/local/bin/gitea
 
-# Gitea directory layout (build-design.md §3): work dir + config dir, owned by
+# Gitea directory layout (build-system.md §3): work dir + config dir, owned by
 # the git user. app.ini is written by the deploy step, not baked here.
 mkdir -p /var/lib/gitea/custom /var/lib/gitea/data /var/lib/gitea/log
 mkdir -p /etc/gitea

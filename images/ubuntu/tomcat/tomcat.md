@@ -4,7 +4,7 @@ GCE image family **`tomcat`**: Ubuntu + basic tools + gcloud CLI + JDK + Apache
 Tomcat running as a `systemd` service. This is the original/primary flavor.
 
 Maven is **not** installed — WARs are built by the docker `maven` image at build
-time and pulled onto the VM at boot (see `build-design.md`).
+time and pulled onto the VM at boot (see `build-system.md` and `ops-deployment.md`).
 
 ## Contents
 

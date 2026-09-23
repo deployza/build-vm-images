@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bake /etc/image-manifest.txt into the image (build-design.md §9). This is the
+# Bake /etc/image-manifest.txt into the image (build-system.md §5). This is the
 # source of truth that cannot drift: `cat /etc/image-manifest.txt` on any VM
 # tells you exactly what is installed.
 #

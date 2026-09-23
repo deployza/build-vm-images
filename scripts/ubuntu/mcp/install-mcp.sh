@@ -6,7 +6,7 @@
 # and installs the units plus their helper binaries. Nothing is configured for a
 # specific deployment and no secret is baked — same contract as install-gitea.sh:
 # the units are ENABLED but cannot come up until the VM's boot script mounts the
-# data disk. See build-design.md §3.
+# data disk. See build-system.md §3.
 #
 # THERE ARE TWO SERVERS, not one: graphify itself on 127.0.0.1:8081, and the OAuth
 # gateway (mcp-auth, built on fastmcp) holding the public :8080 in front of it. The

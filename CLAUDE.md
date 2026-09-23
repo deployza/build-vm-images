@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 > The overall Cloud Build / deploy / Terraform architecture lives in the
 > **`build-docs`** repo, cloned as a sibling of this one:
 > [`../build-docs/README.md`](../build-docs/README.md) — see especially
-> [`../build-docs/build-design.md`](../build-docs/build-design.md).
+> [`../build-docs/build-system.md`](../build-docs/build-system.md).
 >
 > **If that path does not exist, you have not cloned `build-docs` yet — stop and
 > clone it first** (it sits next to this repo under `Build/`):
@@ -134,8 +134,8 @@ These are self-contained — there is no build-time dependency on a sibling repo
   throwaway/isolated VPC only — never a Shared VPC or one holding production
   assets:** the bake VM runs the `install-*.sh` provisioners as root and is
   SSH-reachable, so a tampered installer would execute inside whatever network it
-  sits in. See `build-design.md` §3 for the commands and rationale.
-- See `build-design.md` §3 in `build-docs` for the full template and rationale.
+  sits in. See `build-system.md` §3 for the commands and rationale.
+- See `build-system.md` §3 in `build-docs` for the full template and rationale.
 
 ## Log & disk hygiene (VM-only)
 
@@ -251,7 +251,7 @@ build-vm-images/
       nginx-tomcat.sh         # enables Tomcat's RemoteIpValve; its own provisioner step
       install-mysql.sh
       install-otel.sh         # OpenTelemetry Collector, INERT (every flavor)
-      write-manifest.sh       # bakes /etc/image-manifest.txt (build-design.md §9)
+      write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
       versions.env            # single source for pinned versions
       setenv.sh
       server.xml              # repo-owned Tomcat conf/server.xml (see below)
@@ -332,7 +332,7 @@ Full design and reasoning: `../build-docs/ops-execution.md`.
 ### Image composition guidance
 
 Each `images/<os>/<flavor>/` folder produces one image **family**. The flavor folder
-name and the family name match. The `tomcat` flavor is the one `build-design.md`
+name and the family name match. The `tomcat` flavor is the one `build-system.md`
 uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 
 - `java` (family `java`): basic tools + Java only.
