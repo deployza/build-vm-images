@@ -27,8 +27,8 @@
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=versions.env
-source "$SCRIPT_DIR/versions.env"
+# shellcheck source=../versions.env
+source "$SCRIPT_DIR/../versions.env"
 
 CSP_HOME=/opt/cloud-sql-proxy
 CSP_CONF_DIR=/etc/cloud-sql-proxy

@@ -109,9 +109,9 @@ time — neither is baked into the image.
 ### Client IP and scheme (RemoteIpValve)
 
 Tomcat's `conf/server.xml` is **owned by this repo**
-([`scripts/ubuntu/server.xml`](../../../scripts/ubuntu/server.xml)) and installed
+([`scripts/ubuntu/tomcat/server.xml`](../../../scripts/ubuntu/tomcat/server.xml)) and installed
 verbatim by `install-tomcat.sh`. It ships the `RemoteIpValve` **commented out**;
-[`scripts/ubuntu/nginx-tomcat.sh`](../../../scripts/ubuntu/nginx-tomcat.sh) — a
+[`scripts/ubuntu/tomcat/nginx-tomcat.sh`](../../../scripts/ubuntu/tomcat/nginx-tomcat.sh) — a
 separate provisioner step in this flavor's `image.pkr.hcl`, run after
 `install-nginx.sh` — enables it by deleting the two
 `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines that form the comment:

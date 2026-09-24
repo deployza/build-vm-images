@@ -38,7 +38,7 @@
 # HOW THE EDIT WORKS
 #
 # The valve is NOT inserted here — it is already present in the repo-owned
-# scripts/ubuntu/server.xml that install-tomcat.sh installs, wrapped in an XML
+# scripts/ubuntu/tomcat/server.xml that install-tomcat.sh installs, wrapped in an XML
 # comment between DEPLOYZA-REMOTEIP-BEGIN/END markers. This script only
 # UNCOMMENTS it, by deleting the two marker lines that form the comment.
 #

@@ -113,10 +113,12 @@ build {
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/install-java.sh",
-      "bash /tmp/scripts/install-tomcat.sh",
-      "bash /tmp/scripts/install-otel.sh",
-      "bash /tmp/scripts/install-cloud-sql-proxy.sh",
+      "bash /tmp/scripts/tomcat/install-tomcat.sh",
+      "bash /tmp/scripts/otelcol/install-otel.sh",
+      "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/install-python.sh",
+      "bash /tmp/scripts/logs/logs-system.sh",
+      "bash /tmp/scripts/logs/logs-disk-tools.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

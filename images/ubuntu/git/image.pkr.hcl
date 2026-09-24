@@ -105,10 +105,12 @@ build {
     inline = [
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-gcloud.sh",
-      "bash /tmp/scripts/install-gitea.sh",
-      "bash /tmp/scripts/install-otel.sh",
-      "bash /tmp/scripts/install-cloud-sql-proxy.sh",
+      "bash /tmp/scripts/gitea/install-gitea.sh",
+      "bash /tmp/scripts/otelcol/install-otel.sh",
+      "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/install-python.sh",
+      "bash /tmp/scripts/logs/logs-system.sh",
+      "bash /tmp/scripts/logs/logs-disk-tools.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

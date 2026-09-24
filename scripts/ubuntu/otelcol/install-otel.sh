@@ -24,8 +24,8 @@
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=versions.env
-source "$SCRIPT_DIR/versions.env"
+# shellcheck source=../versions.env
+source "$SCRIPT_DIR/../versions.env"
 
 OTELCOL_HOME=/opt/otelcol
 OTELCOL_CONF_DIR=/etc/otelcol

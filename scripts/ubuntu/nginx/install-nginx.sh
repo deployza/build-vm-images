@@ -20,8 +20,8 @@
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=versions.env
-source "$SCRIPT_DIR/versions.env"
+# shellcheck source=../versions.env
+source "$SCRIPT_DIR/../versions.env"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -160,7 +160,7 @@ EOF
 
 # --- Tomcat's RemoteIpValve is NOT enabled here -------------------------------
 # Telling Tomcat to trust this proxy's X-Forwarded-* headers is a separate step,
-# in scripts/ubuntu/nginx-tomcat.sh, invoked as its own line in each flavor's
+# in scripts/ubuntu/tomcat/nginx-tomcat.sh, invoked as its own line in each flavor's
 # image.pkr.hcl AFTER this installer. See that script for the rationale (why it
 # belongs to the nginx side rather than install-tomcat.sh, and why
 # internalProxies stays at loopback only).

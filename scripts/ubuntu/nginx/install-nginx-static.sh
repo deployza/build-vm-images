@@ -31,8 +31,8 @@
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=versions.env
-source "$SCRIPT_DIR/versions.env"
+# shellcheck source=../versions.env
+source "$SCRIPT_DIR/../versions.env"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -135,7 +135,7 @@ EOF
 # -----------------------------------------------------------------------------
 
 # This flavor never runs Tomcat, so there is no equivalent of
-# scripts/ubuntu/nginx-tomcat.sh here and none should be added — RemoteIpValve
+# scripts/ubuntu/tomcat/nginx-tomcat.sh here and none should be added — RemoteIpValve
 # only makes sense in front of a Tomcat connector.
 
 # Rotate nginx's own logs. The nginx.org package ships /etc/logrotate.d/nginx,

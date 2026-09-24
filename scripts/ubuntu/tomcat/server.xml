@@ -18,7 +18,7 @@
 <!--
   ============================================================================
   DEPLOYZA-OWNED server.xml — based on stock Apache Tomcat 11.0.8.
-  Installed verbatim by scripts/ubuntu/install-tomcat.sh.
+  Installed verbatim by scripts/ubuntu/tomcat/install-tomcat.sh.
 
   This file is a COPY of upstream's conf/server.xml with exactly two deliberate
   changes, both marked with a "DEPLOYZA:" comment below:
@@ -51,7 +51,7 @@
   moves, diff this file against the new release's conf/server.xml and carry the
   two DEPLOYZA changes forward:
       tar -xzf apache-tomcat-<ver>.tar.gz apache-tomcat-<ver>/conf/server.xml
-      diff apache-tomcat-<ver>/conf/server.xml scripts/ubuntu/server.xml
+      diff apache-tomcat-<ver>/conf/server.xml scripts/ubuntu/tomcat/server.xml
   ============================================================================
 -->
 <!-- Note:  A "Server" is not itself a "Container", so you may not

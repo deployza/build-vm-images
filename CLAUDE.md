@@ -38,7 +38,9 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > `install-gcloud.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-nginx.sh`, `install-mysql.sh`,
 > `install-python.sh`, `write-manifest.sh`, `versions.env`, `setenv.sh`,
-> `server.xml`, `tomcat.service`) live under `scripts/<os>/`.
+> `server.xml`, `tomcat.service`) live under `scripts/<os>/`, or, where a
+> component owns several files, under a per-component subfolder of it
+> (`scripts/<os>/tomcat/`, `.../otelcol/`, ... — see the layout below).
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
@@ -142,10 +144,16 @@ These are self-contained — there is no build-time dependency on a sibling repo
 Because these images run services **directly on the VM** (Tomcat/MySQL as
 systemd units), the host owns log and disk management. Two layers:
 
-- **Host-wide, generic** — `scripts/logs-system.sh` (systemd journal retention,
-  core-dump size caps, generic `/opt` logrotate + a logrotate dry-run) and
-  `scripts/logs-disk-tools.sh` (`disk-audit` / `disk-alert` helpers). Set only
-  what differs from the OS defaults.
+- **Host-wide, generic** — `scripts/ubuntu/logs/logs-system.sh` (systemd journal
+  retention, core-dump size caps, generic `/opt` logrotate + a logrotate dry-run
+  that **fails the bake** if any rule on the image does not parse) and
+  `scripts/ubuntu/logs/logs-disk-tools.sh` (`disk-audit` / `disk-alert` helpers). Set
+  only what differs from the OS defaults. Both run on **every** flavor, last
+  before `write-manifest.sh` — `logs-disk-tools.sh` does `apt-get clean`, so it
+  has to follow the last apt work (`install-python.sh`) to reclaim anything.
+  They lived at `scripts/` root until 2026-09-24 and were therefore never
+  shipped by the file provisioner (`source = "scripts/ubuntu/"`) and had never
+  run; do not move them back out.
 - **Per-service** — each installer owns its own log config: Tomcat log rotation
   in `install-tomcat.sh` (app logs live under `/home/tomcat/instance/logs/<app>/`,
   written per the app's own logback config),
@@ -153,7 +161,7 @@ systemd units), the host owns log and disk management. Two layers:
   `/var/log/nginx/*.log` rotation in `install-nginx.sh`. Keep
   service log config with the service that produces it, not in the `logs-*`
   scripts. Tomcat's per-request access log is **off**: the repo-owned
-  `scripts/ubuntu/server.xml` simply omits upstream's `AccessLogValve`, so no
+  `scripts/ubuntu/tomcat/server.xml` simply omits upstream's `AccessLogValve`, so no
   `localhost_access_log.*.txt` files are written — matching the fleet-wide
   access-log-off decision in the docker images.
 
@@ -243,25 +251,45 @@ Example structure:
 build-vm-images/
   scripts/
     ubuntu/                   # toolchain installers for Ubuntu, owned by this repo
+      versions.env            # single source for pinned versions (stays at the top level:
+                              # every installer sources it, grouped ones as ../versions.env)
       install-basics.sh       # apt basics ONLY (distro python3 + venv/pip included)
       install-gcloud.sh       # Google Cloud CLI: third-party apt repo + key
       install-python.sh       # pinned CPython, compiled; its own provisioner line, kept LAST
       install-java.sh
-      install-tomcat.sh
-      install-nginx.sh
-      nginx-tomcat.sh         # enables Tomcat's RemoteIpValve; its own provisioner step
       install-mysql.sh
-      install-otel.sh         # OpenTelemetry Collector, INERT (every flavor)
-      install-cloud-sql-proxy.sh  # Cloud SQL Auth Proxy, INERT (every flavor)
+      install-mkdocs.sh
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
-      versions.env            # single source for pinned versions
-      setenv.sh
-      server.xml              # repo-owned Tomcat conf/server.xml (see below)
-      tomcat.service
-      otelcol.service         # collector unit (not a template, unlike tomcat.service)
-      otelcol-base.yaml       # the inert nop config baked as /etc/otelcol/config.yaml
-      cloud-sql-proxy.service # proxy unit — installed but NOT enabled at bake
-      cloud-sql-proxy.env     # the empty instance config baked as /etc/cloud-sql-proxy/env
+      # A component that owns more than its installer gets a folder, holding the
+      # installer NEXT TO the units and config files it installs. The file
+      # provisioner copies scripts/ubuntu/ recursively, so these arrive as
+      # /tmp/scripts/<group>/ and are invoked by that path.
+      tomcat/
+        install-tomcat.sh
+        nginx-tomcat.sh       # enables Tomcat's RemoteIpValve; its own provisioner step
+        server.xml            # repo-owned Tomcat conf/server.xml (see below)
+        setenv.sh
+        tomcat.service
+      nginx/
+        install-nginx.sh
+        install-nginx-static.sh  # nginx with no Tomcat upstream (static / Python flavors)
+      otelcol/
+        install-otel.sh       # OpenTelemetry Collector, INERT (every flavor)
+        otelcol.service       # collector unit (not a template, unlike tomcat.service)
+        otelcol-base.yaml     # the inert nop config baked as /etc/otelcol/config.yaml
+      cloud-sql-proxy/
+        install-cloud-sql-proxy.sh  # Cloud SQL Auth Proxy, INERT (every flavor)
+        cloud-sql-proxy.service # proxy unit — installed but NOT enabled at bake
+        cloud-sql-proxy.env   # the empty instance config baked as /etc/cloud-sql-proxy/env
+      gitea/
+        install-gitea.sh
+        gitea.service
+      logs/
+        logs-system.sh        # host-wide journald + logrotate policy (every flavor)
+        logs-disk-tools.sh    # disk-audit / disk-alert helpers (every flavor)
+      mcp/                    # graphify MCP server: units, helper binaries, mcp.env
+        install-mcp.sh
+        ...
   images/
     ubuntu/
       java/
@@ -412,7 +440,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   README contract as `install-nginx.sh`, just without the Tomcat pieces. See
   `images/ubuntu/nginx/nginx.md`.
 
-> **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/server.xml`
+> **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/tomcat/server.xml`
 > is upstream's file with two deliberate changes (no `AccessLogValve`; a
 > `RemoteIpValve` present but commented out), installed verbatim by
 > `install-tomcat.sh`. Change configuration by editing that file, **never** by
@@ -421,7 +449,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 > On a Tomcat bump, diff it against the new release's `conf/server.xml` (the
 > procedure is in the file's own header).
 >
-> **Only `scripts/ubuntu/nginx-tomcat.sh` enables the `RemoteIpValve`** (by
+> **Only `scripts/ubuntu/tomcat/nginx-tomcat.sh` enables the `RemoteIpValve`** (by
 > deleting the `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines). It is a **separate
 > provisioner line** in a flavor's `image.pkr.hcl`, run after `install-nginx.sh`
 > — `install-nginx.sh` does not call it, so granting this trust stays an explicit

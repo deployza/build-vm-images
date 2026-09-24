@@ -1,21 +1,33 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 # Install two on-VM disk helpers:
 #   /usr/local/sbin/disk-audit  - interactive report of where disk is going
 #   /usr/local/sbin/disk-alert  - cron-driven check that logs when a mount is full
 # and clean the apt cache to reclaim space up front.
+#
+# Runs on every flavor, via the provisioner's `sudo -E bash`, so nothing at this
+# level calls sudo itself (same convention as the install-*.sh siblings). The
+# sudo calls INSIDE the disk-audit heredoc are deliberate: that is a generated
+# script run later by a human, not part of the bake. This file lived at
+# scripts/ root until 2026-09-24, which meant the file provisioner
+# (source = "scripts/ubuntu/") never shipped it and it had never actually run.
+#
+# disk-alert LOGS ONLY - it does not mail or page. It writes to syslog under the
+# tag "disk-alert" and nothing watches that tag today, so treat it as a
+# breadcrumb during an investigation, not as monitoring. (A previous
+# ADMIN_EMAIL knob was removed: it was assigned and never read, which made the
+# script look like it would mail you.)
 
 DISK_ALERT_THRESHOLD="${DISK_ALERT_THRESHOLD:-85}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-root}"
 
 echo "== Clean package cache safely =="
 
-sudo apt-get clean || true
+apt-get clean || true
 
 
 echo "== Install disk audit helper =="
 
-sudo tee /usr/local/sbin/disk-audit >/dev/null <<'EOF'
+tee /usr/local/sbin/disk-audit >/dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -47,15 +59,14 @@ echo "===== Common dangerous files ====="
 sudo find / -xdev \( -name "*.hprof" -o -name "core.*" -o -name "*.dump" -o -name "*.dmp" \) -exec ls -lh {} \; 2>/dev/null || true
 EOF
 
-sudo chmod +x /usr/local/sbin/disk-audit
+chmod +x /usr/local/sbin/disk-audit
 
 
 echo "== Install simple disk alert cron =="
 
-sudo tee /usr/local/sbin/disk-alert >/dev/null <<EOF
+tee /usr/local/sbin/disk-alert >/dev/null <<EOF
 #!/usr/bin/env bash
 THRESHOLD="${DISK_ALERT_THRESHOLD}"
-EMAIL="${ADMIN_EMAIL}"
 
 df -P | awk -v threshold="\$THRESHOLD" '
 NR > 1 {
@@ -67,9 +78,9 @@ NR > 1 {
 }'
 EOF
 
-sudo chmod +x /usr/local/sbin/disk-alert
+chmod +x /usr/local/sbin/disk-alert
 
-sudo tee /etc/cron.d/disk-alert >/dev/null <<'EOF'
+tee /etc/cron.d/disk-alert >/dev/null <<'EOF'
 */30 * * * * root /usr/local/sbin/disk-alert | logger -t disk-alert
 EOF
 
