@@ -82,13 +82,6 @@ Two consequences that are easy to get wrong:
 All of this flavor's shell belongs to this repo — `mcp-boot` is baked here rather
 than living in the consuming Terraform as a startup script.
 
-## Why `install-vm-startup.sh` is not in this flavor
-
-The standard boot launcher requires `APP_NAME`/`APP_ENV` metadata and fails the
-boot without them, then clones `build-app-install` and runs `vm/<APP_NAME>.sh` —
-a contract built around pulling a WAR and `conf/` from GCS and deploying into
-Tomcat. graphify has no WAR, no `conf/` and no Tomcat.
-
 ## Contents
 
 - `install-basics.sh` — apt basics + gcloud CLI (also installs `git` and `jq`) + Python (distro `python3`/venv/pip, and the pinned

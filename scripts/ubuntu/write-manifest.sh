@@ -101,6 +101,21 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # The Cloud SQL Auth Proxy is baked on every flavor but ships with NO instance
+  # and its unit NOT enabled, so record both the version and whether this VM has
+  # actually been pointed at a database. "does this box reach Cloud SQL, and
+  # which instance" is otherwise a two-command investigation on a VM where the
+  # answer is usually "no".
+  if [ -x /opt/cloud-sql-proxy/bin/cloud-sql-proxy ]; then
+    echo "== cloud-sql-proxy --version =="
+    /opt/cloud-sql-proxy/bin/cloud-sql-proxy --version 2>&1 || true
+    echo
+    echo "== cloud-sql-proxy instances (empty => as baked, connects nowhere) =="
+    grep '^CSP_INSTANCES=' /etc/cloud-sql-proxy/env 2>/dev/null || true
+    systemctl is-enabled cloud-sql-proxy.service 2>&1 || true
+    echo
+  fi
+
   echo "== dpkg packages =="
   dpkg-query -W -f='${Package}\t${Version}\n' 2>/dev/null | sort
 } > "$MANIFEST"

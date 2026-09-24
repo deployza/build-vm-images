@@ -35,6 +35,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > divergence (SELinux, firewalld, repo RPMs, dnf, package names) is large.
 
 > **Self-contained installers.** The installers (`install-basics.sh`,
+> `install-gcloud.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-nginx.sh`, `install-mysql.sh`,
 > `install-python.sh`, `write-manifest.sh`, `versions.env`, `setenv.sh`,
 > `server.xml`, `tomcat.service`) live under `scripts/<os>/`.
@@ -67,9 +68,8 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > reserved for `mcp_md_extract.py`, which really is an importable module.
 > The shebang carries the language for editors and for graphify's own indexer,
 > but a `**/*.sh` glob will skip these — **lint by shebang, not by extension**.
-> Known exception: `vm-startup.sh` keeps its extension on the target; it ships on
-> six flavors and has not been renamed. Upstream names (`gitea`, Tomcat's
-> `catalina.sh`/`setenv.sh`) are not ours to choose.
+> Upstream names (`gitea`, Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
+> choose.
 
 > **Current state.** Nine flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
@@ -243,14 +243,16 @@ Example structure:
 build-vm-images/
   scripts/
     ubuntu/                   # toolchain installers for Ubuntu, owned by this repo
-      install-basics.sh       # apt basics + gcloud + python (calls install-python.sh)
-      install-python.sh       # pinned CPython, compiled; run by install-basics.sh
+      install-basics.sh       # apt basics ONLY (distro python3 + venv/pip included)
+      install-gcloud.sh       # Google Cloud CLI: third-party apt repo + key
+      install-python.sh       # pinned CPython, compiled; its own provisioner line, kept LAST
       install-java.sh
       install-tomcat.sh
       install-nginx.sh
       nginx-tomcat.sh         # enables Tomcat's RemoteIpValve; its own provisioner step
       install-mysql.sh
       install-otel.sh         # OpenTelemetry Collector, INERT (every flavor)
+      install-cloud-sql-proxy.sh  # Cloud SQL Auth Proxy, INERT (every flavor)
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
       versions.env            # single source for pinned versions
       setenv.sh
@@ -258,6 +260,8 @@ build-vm-images/
       tomcat.service
       otelcol.service         # collector unit (not a template, unlike tomcat.service)
       otelcol-base.yaml       # the inert nop config baked as /etc/otelcol/config.yaml
+      cloud-sql-proxy.service # proxy unit — installed but NOT enabled at bake
+      cloud-sql-proxy.env     # the empty instance config baked as /etc/cloud-sql-proxy/env
   images/
     ubuntu/
       java/
@@ -329,6 +333,44 @@ Two things to know before touching it:
 
 Full design and reasoning: `../build-docs/ops-execution.md`.
 
+### Database access: baked but inert, and NOT enabled
+
+`install-cloud-sql-proxy.sh` runs on **every** flavor and installs the Cloud SQL
+Auth Proxy binary (`/opt/cloud-sql-proxy/bin/cloud-sql-proxy`) plus
+`cloud-sql-proxy.service`, with `cloud-sql-proxy.env` baked as
+`/etc/cloud-sql-proxy/env` — an **empty** `CSP_INSTANCES`. A VM booted from any
+of these images connects to no database.
+
+**The unit is installed but NOT enabled, and that is the one way this differs
+from otel.** The collector's inert `nop` config is still a valid config, so it
+can run healthily with nothing to do. The proxy has no such state: given no
+instance connection name it exits non-zero at once, so an enabled unit would put
+every VM in the fleet into restart backoff at boot. The deploy step that knows
+the instance turns it on:
+
+```bash
+printf 'CSP_INSTANCES=%s\n' "my-project:asia-east1:my-instance" \
+  >> /etc/cloud-sql-proxy/env
+systemctl enable --now cloud-sql-proxy.service
+```
+
+Three things to know before touching it:
+
+- **It listens on 127.0.0.1:3307, not 3306.** 3306 belongs to the local MySQL
+  daemon on the `mysql` / `tomcat-mysql` / `tomcat-nginx-mysql` flavors, and one
+  env file that is correct on every flavor is worth more than matching the
+  upstream default port. A Cloud SQL JDBC URL is therefore
+  `jdbc:mysql://127.0.0.1:3307/<db>`. Never bind the listener beyond loopback:
+  the proxy terminates an *authenticated* tunnel, so whatever reaches that port
+  is the database client.
+- **There are no credentials to bake.** The proxy authenticates as the VM's own
+  service account through the metadata server, so what it needs is an IAM grant
+  — `roles/cloudsql.client` on the target instance — not a key file. A missing
+  grant is a 403 in `journalctl -u cloud-sql-proxy`, not a refused connection.
+- **The process, not the JDBC socket factory.** The Java connector library would
+  serve the Tomcat flavors only; a process serves the Python flavors, a `mysql`
+  shell during an incident, and any future runtime through one mechanism.
+
 ### Image composition guidance
 
 Each `images/<os>/<flavor>/` folder produces one image **family**. The flavor folder
@@ -342,10 +384,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `mcp` (family `mcp`): basic tools + a Python venv holding graphify and
   its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
   **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
-  keeps its assets in `scripts/ubuntu/mcp/`. It also deliberately omits
-  `install-vm-startup.sh`: that launcher requires `APP_NAME`/`APP_ENV` and expects
-  to deploy a WAR from GCS into Tomcat, none of which applies here. See
-  `images/ubuntu/mcp/mcp.md`.
+  keeps its assets in `scripts/ubuntu/mcp/`. See `images/ubuntu/mcp/mcp.md`.
 - `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image
@@ -409,15 +448,38 @@ the bare flavor name (e.g. `tomcat`); the tool version lives in the `image_name`
 (`tomcat-1-0-0`) and in image **labels** — never in the family — so consumers
 track `--image-family=tomcat` without ever chasing minor-version bumps.
 
-Each image runs `install-basics.sh` first, then the additional installer scripts
-required by that flavor, and finishes with `write-manifest.sh`.
+Each image runs `install-basics.sh` then `install-gcloud.sh` first, then the
+additional installer scripts required by that flavor, then `install-otel.sh` +
+`install-cloud-sql-proxy.sh`, and finishes with `install-python.sh` +
+`write-manifest.sh`.
+
+> **Every installer gets its own provisioner line — no installer calls
+> another.** `install-basics.sh` used to end by invoking `install-python.sh`,
+> and used to add the Google Cloud apt repo itself. Both are now separate files
+> with their own line in every `image.pkr.hcl`. Chaining hid two steps with
+> quite different failure modes — an upstream repo signing key, and a
+> 15-minute source build — behind one `install-basics.sh` entry in the build
+> log, and it meant a template did not say what the flavor actually installs.
+> The three baseline lines (`basics`, `gcloud`, `python`) are now as visible in
+> a diff as `install-otel.sh` and `install-cloud-sql-proxy.sh` are, and a new
+> flavor that omits one is caught by reading the template rather than by a
+> missing binary on a booted VM. `nginx-tomcat.sh` already worked this way for
+> the same reason; keep it that way for anything added next.
+>
+> **`install-python.sh` is kept LAST, immediately before `write-manifest.sh`.**
+> It is by far the slowest step, so every cheap failure in every other
+> installer surfaces before the compile rather than 15 minutes after it.
+> Nothing in a bake depends on its output — `install-mkdocs.sh` and
+> `install-mcp.sh` build their venvs from the **distro** `python3` that
+> `install-basics.sh` puts down — so running it last costs nothing.
 
 > **Python is baseline on every flavor, and it costs every bake 10-20
-> minutes.** `install-basics.sh` — which every flavor runs first — installs the
-> distro's `python3`/`python3-venv`/`python3-pip` AND then calls
-> `install-python.sh`, which **compiles** the pinned CPython from source into
-> `/opt/python/<version>` (symlink `/opt/python/latest`, the same
-> `/opt/<tool>/latest` layout as `/opt/java/latest`).
+> minutes.** `install-basics.sh` installs the distro's
+> `python3`/`python3-venv`/`python3-pip` from apt, and a separate
+> `install-python.sh` line in every flavor's template **compiles** the pinned
+> CPython from source into `/opt/python/<version>` (symlink
+> `/opt/python/latest`, the same `/opt/<tool>/latest` layout as
+> `/opt/java/latest`).
 >
 > Source-built because there is no alternative that stays pinned: Ubuntu 24.04
 > has no 3.14 package at all, and the usual backport (the deadsnakes PPA)
@@ -451,6 +513,7 @@ required by that flavor, and finishes with `write-manifest.sh`.
 > interpreter must name it (`python3.14`, or its venv's own `bin/python`).
 >
 > **Python is not an image label.** Labels carry what distinguishes a flavor,
-> and baseline tools from `install-basics.sh` (gcloud, git, curl) have never
-> been labelled. `nginx-python` is the single exception, because it is named
-> after it. The version is in `/etc/image-manifest.txt` on every image.
+> and baseline tools (git and curl from `install-basics.sh`, gcloud from
+> `install-gcloud.sh`) have never been labelled. `nginx-python` is the single
+> exception, because it is named after it. The version is in
+> `/etc/image-manifest.txt` on every image.

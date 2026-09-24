@@ -103,9 +103,11 @@ build {
     ]
     inline = [
       "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/install-mysql.sh",
-      "bash /tmp/scripts/install-vm-startup.sh",
       "bash /tmp/scripts/install-otel.sh",
+      "bash /tmp/scripts/install-cloud-sql-proxy.sh",
+      "bash /tmp/scripts/install-python.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

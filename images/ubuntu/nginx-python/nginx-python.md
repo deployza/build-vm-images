@@ -23,8 +23,6 @@ application behind nginx.
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`, empty `/etc/nginx/app.d/` routing seam
-- `install-vm-startup.sh` — the generic boot launcher (clones
-  `build-app-install` and runs `vm/<APP_NAME>.sh` on every boot)
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env)
 (`NGINX_VERSION`, `PYTHON_VERSION`).

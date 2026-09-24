@@ -117,16 +117,13 @@ build {
       "IMAGE_FLAVOR=mcp",
       "GIT_SHA=${var.git_sha}",
     ]
-    # install-vm-startup.sh is deliberately ABSENT. That launcher requires
-    # APP_NAME and APP_ENV metadata and fails the boot without them, then clones
-    # build-app-install and runs vm/<APP_NAME>.sh — a contract built around
-    # pulling a WAR and conf/ from GCS and deploying into Tomcat. graphify has no
-    # WAR, no conf/ and no Tomcat; its per-instance boot work is a disk mount,
-    # which build-terraform does in the VM's own startup script.
     inline = [
       "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/mcp/install-mcp.sh",
       "bash /tmp/scripts/install-otel.sh",
+      "bash /tmp/scripts/install-cloud-sql-proxy.sh",
+      "bash /tmp/scripts/install-python.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

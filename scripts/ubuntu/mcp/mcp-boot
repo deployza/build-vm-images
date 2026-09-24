@@ -3,9 +3,10 @@
 # mcp-boot — per-instance provisioning, run once per boot by
 # mcp-boot.service before the server and refresh units start.
 #
-# Baked to /usr/local/bin/mcp-boot. This is the mcp flavor's equivalent of
-# vm-startup.sh: the image cannot bake it away, because everything it touches is
-# per-instance state that does not exist at bake time.
+# Baked to /usr/local/bin/mcp-boot. It is the one boot-time unit this fleet
+# still has: the image cannot bake it away, because everything it touches is
+# per-instance state that does not exist at bake time. It provisions the host
+# only — app deploys are pushed over SSH, never pulled at boot.
 #
 #   1. /data — a directory on the boot disk, or a mounted disk if one is attached
 #   2. a 2 GB swapfile in it

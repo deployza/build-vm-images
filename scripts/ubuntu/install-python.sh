@@ -2,10 +2,16 @@
 # Install CPython under /opt/python/<version> and symlink /opt/python/latest,
 # mirroring install-java.sh's /opt/<tool>/latest layout.
 #
-# CALLED BY install-basics.sh, SO THIS RUNS ON EVERY FLAVOR. It is not a
-# per-flavor opt-in: Python is baseline fleet-wide. It stays a separate file
-# because it is long, because it is the only part of basics that builds from
-# source, and so it remains runnable on its own against a live VM.
+# INVOKED AS ITS OWN PACKER PROVISIONER LINE BY EVERY FLAVOR, and kept LAST in
+# that list, immediately before write-manifest.sh. It used to be chained from
+# the end of install-basics.sh; it is called explicitly now so that a template
+# says what the flavor installs and so a failure here names this script rather
+# than "basics". Last, because it is by far the slowest step in a bake: every
+# cheap failure in every other installer surfaces before the compile rather than
+# 15 minutes after it. Python is baseline fleet-wide, not a per-flavor opt-in.
+# Nothing else in a bake depends on it -- install-mkdocs.sh and install-mcp.sh
+# build their venvs from the DISTRO python3 that install-basics.sh puts down --
+# so running it last is free.
 #
 # It is also why every template carries machine_type = "e2-standard-8" and
 # disk_size = 20, and every cloudbuild.yaml a timeout of 3600s -- the compile
@@ -25,7 +31,7 @@
 #
 # THE SYSTEM PYTHON IS LEFT ALONE. Ubuntu's /usr/bin/python3 stays 3.12 and is
 # never redirected: apt, unattended-upgrades and the gcloud CLI from
-# install-basics.sh all run against it by absolute path or by `#!/usr/bin/python3`,
+# install-gcloud.sh all run against it by absolute path or by `#!/usr/bin/python3`,
 # and repointing it is the classic way to leave a box unable to run apt. This
 # script therefore installs into a private prefix, adds only VERSIONED names to
 # /usr/local/bin (python3.14, pip3.14 — never a bare python3/pip3, which would

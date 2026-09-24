@@ -106,11 +106,6 @@ build {
     destination = "/tmp/scripts/"
   }
 
-  # install-vm-startup.sh IS included here, unlike mcp: this flavor deploys the
-  # generic GCS-WAR/APP_NAME+APP_ENV way (an unpacked site under /var/www/app,
-  # the same convention ziniapps-www.sh already uses against
-  # install-nginx.sh-baked images), and vm-startup.sh's own requirements
-  # (git + curl, both from install-basics.sh) have no Tomcat dependency.
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
@@ -119,10 +114,12 @@ build {
     ]
     inline = [
       "bash /tmp/scripts/install-basics.sh",
+      "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/install-nginx-static.sh",
       "bash /tmp/scripts/install-mkdocs.sh",
-      "bash /tmp/scripts/install-vm-startup.sh",
       "bash /tmp/scripts/install-otel.sh",
+      "bash /tmp/scripts/install-cloud-sql-proxy.sh",
+      "bash /tmp/scripts/install-python.sh",
       "bash /tmp/scripts/write-manifest.sh",
     ]
   }

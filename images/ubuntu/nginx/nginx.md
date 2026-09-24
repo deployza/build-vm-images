@@ -29,11 +29,6 @@ not a shared source.
 - `install-mkdocs.sh` — Python + a venv at `/opt/mkdocs/venv` holding
   `mkdocs` + `mkdocs-material` + `mkdocs-awesome-pages-plugin`, pinned to
   match `www-apidocs/requirements.txt` exactly. See "MkDocs toolchain" below.
-- `install-vm-startup.sh` — the generic boot launcher (clones
-  `build-app-install` and runs `vm/<APP_NAME>.sh` on every boot). Included
-  here, unlike the `mcp` flavor: this flavor deploys the standard
-  GCS-artifact/`APP_NAME`+`APP_ENV` way, and the launcher's own requirements
-  (`git` + `curl`, both from `install-basics.sh`) have no Tomcat dependency.
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
