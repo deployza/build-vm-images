@@ -351,10 +351,12 @@ in this repo beyond the inert base.
 
 Two things to know before touching it:
 
-- **`OTELCOL_VERSION` is pinned in two repos.** `versions.env` here and
-  `OTELCOL_VERSION` in `build-app-install/otel/cloudbuild.yaml`. Bump them
-  together — CI validating configs against a version the fleet does not run is
-  worse than no CI at all.
+- **`versions.env` here is the only `OTELCOL_VERSION` pin.**
+  `build-app-install/otel/cloudbuild.yaml` held a second copy until it was
+  deleted on 2026-09-24 (that repo is not connected to Cloud Build, so nothing
+  ever triggered the job). There is now no CI on the otel configs at all —
+  `push.sh --dry-run` validates against whatever `otelcol-contrib` the pusher
+  has, so that binary should match this pin.
 - **The `otelcol` user is created with no supplementary groups.** Which groups
   it needs (`adm`, `tomcat`) depends on what the VM runs, which is a push-time
   decision. Do not add them here.
