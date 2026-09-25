@@ -1,6 +1,6 @@
-# `tomcat-nginx-mysql` image
+# `tomcat-mysql-nginx` image
 
-GCE image family **`dz-tomcat-nginx-mysql`**: Ubuntu + basic tools + gcloud CLI +
+GCE image family **`dz-tomcat-mysql-nginx`**: Ubuntu + basic tools + gcloud CLI +
 JDK + Apache Tomcat (systemd) + nginx (systemd, reverse proxy to Tomcat) +
 MySQL Server (distro `mysql-server` + `mysql-client`, 8.0.x, systemd). Web front
 door, app server and database co-located on one VM.
@@ -175,15 +175,15 @@ tcp:443 once TLS is configured) and nothing else.
 Run from the **repo root** (the build context must include `scripts/`):
 
 ```bash
-gcloud builds submit --config images/ubuntu/tomcat-nginx-mysql/cloudbuild.yaml .
+gcloud builds submit --config images/ubuntu/tomcat-mysql-nginx/cloudbuild.yaml .
 ```
 
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
-one. (The `dz-tomcat-nginx-mysql` family pointer just moves to the newest image.)
+one. (The `dz-tomcat-mysql-nginx` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=dz-tomcat-nginx-mysql --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-tomcat-mysql-nginx --image-project=dz-builds`.
 
 ## Changelog
 

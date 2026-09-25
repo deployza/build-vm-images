@@ -75,7 +75,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 
 > **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
-> `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`,
+> `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-mysql-nginx`,
 > `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
 > static web front door) and `ops` (Ansible + Semaphore UI + ClickHouse +
 > Grafana) — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
@@ -315,10 +315,10 @@ build-vm-images/
         image.pkr.hcl
         cloudbuild.yaml
         tomcat-mysql.md
-      tomcat-nginx-mysql/
+      tomcat-mysql-nginx/
         image.pkr.hcl
         cloudbuild.yaml
-        tomcat-nginx-mysql.md
+        tomcat-mysql-nginx.md
 ```
 
 A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
@@ -394,7 +394,7 @@ systemctl enable --now cloud-sql-proxy.service
 Three things to know before touching it:
 
 - **It listens on 127.0.0.1:3307, not 3306.** 3306 belongs to the local MySQL
-  daemon on the `mysql` / `tomcat-mysql` / `tomcat-nginx-mysql` flavors, and one
+  daemon on the `mysql` / `tomcat-mysql` / `tomcat-mysql-nginx` flavors, and one
   env file that is correct on every flavor is worth more than matching the
   upstream default port. A Cloud SQL JDBC URL is therefore
   `jdbc:mysql://127.0.0.1:3307/<db>`. Never bind the listener beyond loopback:
@@ -422,7 +422,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
   **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
   keeps its assets in `scripts/ubuntu/mcp/`. See `images/ubuntu/mcp/mcp.md`.
-- `tomcat-nginx-mysql` (family `dz-tomcat-nginx-mysql`): the above plus nginx on
+- `tomcat-mysql-nginx` (family `dz-tomcat-mysql-nginx`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image
   ships an empty `/etc/nginx/app.d/` that the app deploy script writes into, the
@@ -461,7 +461,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 > deleting the `DEPLOYZA-REMOTEIP-BEGIN`/`END` marker lines). It is a **separate
 > provisioner line** in a flavor's `image.pkr.hcl`, run after `install-nginx.sh`
 > — `install-nginx.sh` does not call it, so granting this trust stays an explicit
-> per-flavor choice. Only `tomcat-nginx-mysql` includes the line; it is also
+> per-flavor choice. Only `tomcat-mysql-nginx` includes the line; it is also
 > runnable standalone on a live VM. It tells Tomcat to trust
 > `X-Forwarded-*`, which is only safe where a proxy is the sole path to the
 > connector. Enabling it on the `tomcat` / `tomcat-mysql` flavors, where Tomcat is

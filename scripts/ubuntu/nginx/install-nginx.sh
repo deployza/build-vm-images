@@ -165,7 +165,7 @@ EOF
 # belongs to the nginx side rather than install-tomcat.sh, and why
 # internalProxies stays at loopback only).
 #
-# It is deliberately not called from here: on the tomcat-nginx-mysql flavor the
+# It is deliberately not called from here: on the tomcat-mysql-nginx flavor the
 # valve is required, but keeping it a distinct provisioner line means a flavor
 # that fronts Tomcat differently can install nginx without granting that trust,
 # and the step can be re-run on a live VM on its own.

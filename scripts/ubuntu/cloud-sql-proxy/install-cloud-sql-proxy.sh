@@ -98,7 +98,7 @@ Turning it on (deploy time, once the instance is known):
   systemctl is-active cloud-sql-proxy.service
 
 It then listens on 127.0.0.1:3307 — NOT 3306, which is left to a local MySQL
-daemon on the mysql / tomcat-mysql / tomcat-nginx-mysql flavors. An app's JDBC
+daemon on the mysql / tomcat-mysql / tomcat-mysql-nginx flavors. An app's JDBC
 URL for Cloud SQL is jdbc:mysql://127.0.0.1:3307/<db>.
 
 The VM's service account needs roles/cloudsql.client on the target instance.

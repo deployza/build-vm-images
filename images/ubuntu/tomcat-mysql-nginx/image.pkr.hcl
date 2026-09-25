@@ -1,6 +1,6 @@
-# tomcat-nginx-mysql flavor: basics + Java + Tomcat (systemd) + nginx (systemd,
+# tomcat-mysql-nginx flavor: basics + Java + Tomcat (systemd) + nginx (systemd,
 # reverse proxy to Tomcat) + MySQL (systemd).
-# Family: dz-tomcat-nginx-mysql. Web front door, app server and database co-located
+# Family: dz-tomcat-mysql-nginx. Web front door, app server and database co-located
 # on one VM.
 packer {
   required_plugins {
@@ -73,7 +73,7 @@ variable "mysql_version" {
   default = null
 }
 
-source "googlecompute" "tomcat_nginx_mysql" {
+source "googlecompute" "tomcat_mysql_nginx" {
   project_id              = var.project
   zone                    = var.zone
   source_image_family     = var.source_image_family
@@ -91,11 +91,11 @@ source "googlecompute" "tomcat_nginx_mysql" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "dz-tomcat-nginx-mysql-${var.image_version}"
-  image_family            = "dz-tomcat-nginx-mysql"
+  image_name              = "dz-tomcat-mysql-nginx-${var.image_version}"
+  image_family            = "dz-tomcat-mysql-nginx"
   image_description       = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd) + nginx ${var.nginx_version} (systemd, reverse proxy to Tomcat) + MySQL ${var.mysql_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
-    flavor = "tomcat-nginx-mysql"
+    flavor = "tomcat-mysql-nginx"
     jdk    = replace(var.jdk_version, ".", "-")
     tomcat = replace(var.tomcat_version, ".", "-")
     nginx  = replace(var.nginx_version, ".", "-")
@@ -105,7 +105,7 @@ source "googlecompute" "tomcat_nginx_mysql" {
 }
 
 build {
-  sources = ["source.googlecompute.tomcat_nginx_mysql"]
+  sources = ["source.googlecompute.tomcat_mysql_nginx"]
 
   provisioner "shell" {
     inline = ["mkdir -p /tmp/scripts"]
@@ -131,7 +131,7 @@ build {
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
-      "IMAGE_FLAVOR=tomcat-nginx-mysql",
+      "IMAGE_FLAVOR=tomcat-mysql-nginx",
       "GIT_SHA=${var.git_sha}",
     ]
     inline = [

@@ -33,7 +33,7 @@ steps:
         echo "===================================="
 
   - name: 'hashicorp/packer'
-    args: ['init', 'images/ubuntu/tomcat-nginx-mysql/image.pkr.hcl']
+    args: ['init', 'images/ubuntu/tomcat-mysql-nginx/image.pkr.hcl']
 
   # versions.env (the installers' single source of truth) is sourced here and the
   # pinned versions passed as -var, because packer's file() can't read it from the
@@ -55,5 +55,5 @@ steps:
             -var=tomcat_version=$$TOMCAT_VERSION \
             -var=nginx_version=$$NGINX_VERSION \
             -var=mysql_version=$$MYSQL_VERSION \
-            images/ubuntu/tomcat-nginx-mysql/image.pkr.hcl
+            images/ubuntu/tomcat-mysql-nginx/image.pkr.hcl
         done
