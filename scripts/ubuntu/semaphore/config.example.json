@@ -1,0 +1,11 @@
+{
+  "dialect": "sqlite",
+  "sqlite": {
+    "host": "/var/lib/semaphore/database.sqlite"
+  },
+  "interface": "",
+  "tmp_path": "/var/lib/semaphore/tmp",
+  "cookie_hash": "REPLACE: head -c32 /dev/urandom | base64",
+  "cookie_encryption": "REPLACE: head -c32 /dev/urandom | base64",
+  "access_key_encryption": "REPLACE: head -c32 /dev/urandom | base64"
+}

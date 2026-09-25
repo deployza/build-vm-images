@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+  Installed by install-clickhouse.sh as /etc/clickhouse-server/users.d/deployza.xml.
+
+  The `default` user ships with NO PASSWORD and, in the package's users.xml,
+  `<ip>::/0</ip>`: any address that can reach a listening port may log in.
+  listen_host (config.d/deployza.xml) keeps that to loopback today. This is the
+  second lock, so that a deploy that widens listen_host but forgets the password
+  still does not open the database to the network.
+
+  The deploy step sets a password for `default` (or creates named users) in its
+  own users.d file, and widens these networks deliberately if it must.
+-->
+<clickhouse>
+    <users>
+        <default>
+            <networks replace="replace">
+                <ip>127.0.0.1</ip>
+                <ip>::1</ip>
+            </networks>
+        </default>
+    </users>
+</clickhouse>

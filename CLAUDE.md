@@ -73,12 +73,13 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > Upstream names (`gitea`, Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
 > choose.
 
-> **Current state.** Nine flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Ten flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
 > `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
-> static web front door) and `nginx-python` (that front door plus a CPython
-> runtime) — `mcp`, `nginx` and `nginx-python` are the flavors with no Java.
+> static web front door), `nginx-python` (that front door plus a CPython
+> runtime) and `ops` (Ansible + Semaphore UI + ClickHouse + Grafana) — `mcp`,
+> `nginx`, `nginx-python` and `ops` are the flavors with no Java.
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -259,6 +260,8 @@ build-vm-images/
       install-java.sh
       install-mysql.sh
       install-mkdocs.sh
+      install-ansible.sh      # ansible + ansible-core venv, on PATH (ops)
+      install-grafana.sh      # Grafana OSS + ClickHouse plugin, NOT enabled
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
       # A component that owns more than its installer gets a folder, holding the
       # installer NEXT TO the units and config files it installs. The file
@@ -284,6 +287,14 @@ build-vm-images/
       gitea/
         install-gitea.sh
         gitea.service
+      semaphore/
+        install-semaphore.sh
+        semaphore.service     # installed but NOT enabled at bake (no config yet)
+        config.example.json   # baked as /etc/semaphore/config.json.example
+      clickhouse/
+        install-clickhouse.sh
+        clickhouse-config.xml # baked as config.d/deployza.xml (loopback, log caps, TTLs)
+        clickhouse-users.xml  # baked as users.d/deployza.xml (default user: loopback only)
       logs/
         logs-system.sh        # host-wide journald + logrotate policy (every flavor)
         logs-disk-tools.sh    # disk-audit / disk-alert helpers (every flavor)
@@ -441,6 +452,17 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   weight here. Same empty `/etc/nginx/app.d/` + `/nginx-health` seam and
   README contract as `install-nginx.sh`, just without the Tomcat pieces. See
   `images/ubuntu/nginx/nginx.md`.
+- `ops` (family `ops`): basic tools + Ansible (venv) + Semaphore UI +
+  ClickHouse + Grafana with the ClickHouse datasource plugin. **No Java, no
+  Tomcat, no nginx.** Named for its purpose, like `git` and `mcp`, rather than
+  by joining tool names: four tools made that name too long. Only ClickHouse is enabled
+  (loopback-only, safe as baked). Grafana (it would boot into `admin/admin`) and
+  Semaphore (it cannot start without its secrets) are installed but **not
+  enabled**, following the cloud-sql-proxy precedent. Semaphore is on `:3001`
+  because Grafana owns `:3000`. The bake starts ClickHouse once to prove its
+  config, then wipes `/var/lib/clickhouse`: first start writes the server's
+  `uuid`, and every VM booted from the image must not share it. See
+  `images/ubuntu/ops/ops.md`.
 
 > **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/tomcat/server.xml`
 > is upstream's file with two deliberate changes (no `AccessLogValve`; a
@@ -522,7 +544,7 @@ additional installer scripts required by that flavor, then `install-otel.sh` +
 > build needs `machine_type = "e2-standard-8"` and `disk_size = 20` in the
 > template, and `timeout: 3600s` in `cloudbuild.yaml` — Cloud Build's
 > 10-minute default cannot fit it, and a timeout strands the temp Packer VM.
-> All nine flavors carry all three. **Copy them into any new flavor** or its
+> All ten flavors carry all three. **Copy them into any new flavor** or its
 > first bake fails on the clock, in a way that looks nothing like a Python
 > problem.
 >

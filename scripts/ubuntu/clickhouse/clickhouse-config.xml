@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+  Installed by install-clickhouse.sh as /etc/clickhouse-server/config.d/deployza.xml.
+
+  ONLY WHAT DIFFERS FROM THE PACKAGE'S config.xml. ClickHouse merges config.d/
+  files into config.xml element by element, so the package file stays untouched
+  and an upgrade never has to three-way-merge it. Change settings here, never
+  with a sed patch against config.xml.
+-->
+<clickhouse>
+    <!--
+      LOOPBACK ONLY, as baked. Grafana on this same box reaches it at
+      127.0.0.1:9000 (native) / :8123 (HTTP). The `default` user has no password
+      until the deploy step sets one, so exposing it beyond loopback is a deploy
+      decision, made together with that password. Stated explicitly rather than
+      left to the built-in default, so the seam is visible here.
+    -->
+    <listen_host>127.0.0.1</listen_host>
+
+    <!--
+      The package ships logger level `trace` with 1000M x 10 per file: up to 20GB
+      of server log plus error log on a VM disk. Rotation is ClickHouse's own
+      (by size, in-process), so there is no logrotate rule for these files.
+    -->
+    <logger>
+        <level>information</level>
+        <size>100M</size>
+        <count>5</count>
+    </logger>
+
+    <!--
+      SHARED BOX. The default ratio of 0.9 assumes ClickHouse owns the machine.
+      Here Grafana, Semaphore and every ansible-playbook it spawns need memory
+      too, and an OOM kill picks the biggest process, which is always ClickHouse.
+    -->
+    <max_server_memory_usage_to_ram_ratio>0.6</max_server_memory_usage_to_ram_ratio>
+
+    <!--
+      The system log TABLES have no TTL by default and grow forever: query_log
+      and the metric/trace logs are, on a quiet box, the largest tables it
+      holds. A TTL is applied when the table is created, which on this image is
+      first boot. Only tables enabled in the stock config.xml are listed:
+      naming a disabled one here would ENABLE it.
+    -->
+    <query_log>
+        <ttl>event_date + INTERVAL 30 DAY DELETE</ttl>
+    </query_log>
+    <query_thread_log>
+        <ttl>event_date + INTERVAL 30 DAY DELETE</ttl>
+    </query_thread_log>
+    <part_log>
+        <ttl>event_date + INTERVAL 30 DAY DELETE</ttl>
+    </part_log>
+    <trace_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </trace_log>
+    <metric_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </metric_log>
+    <asynchronous_metric_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </asynchronous_metric_log>
+</clickhouse>

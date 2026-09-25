@@ -1,0 +1,50 @@
+# Semaphore UI. Installed verbatim by install-semaphore.sh. Like
+# cloud-sql-proxy.service, this is not a template and has no @PLACEHOLDER@.
+#
+# INSTALLED BUT NOT ENABLED IN THE IMAGE. There is no /etc/semaphore/config.json
+# until the deploy step writes one, and without it Semaphore exits at once.
+[Unit]
+Description=Semaphore UI (Ansible web UI)
+Documentation=https://semaphoreui.com/docs
+After=network-online.target
+Wants=network-online.target
+
+# A missing or broken config makes Semaphore exit instantly. Five failures in a
+# minute and systemd leaves a clean failed state rather than a tight loop.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+User=semaphore
+Group=semaphore
+WorkingDirectory=/var/lib/semaphore
+Environment=HOME=/home/semaphore
+
+# THE PORT IS OWNED HERE, NOT IN config.json. Grafana has :3000 on this flavor,
+# which is also Semaphore's default, so the image moves Semaphore to :3001.
+# Semaphore lets an environment variable override the config file, so this wins
+# over any "port" a deploy writes. The listen interface IS left to config.json
+# ("interface"), because which address to expose is a deploy decision.
+Environment=SEMAPHORE_PORT=:3001
+Environment=SEMAPHORE_TMP_PATH=/var/lib/semaphore/tmp
+
+ExecStart=/usr/bin/semaphore server --config /etc/semaphore/config.json
+
+Restart=always
+RestartSec=10
+
+# --- Hardening ----------------------------------------------------------------
+# Deliberately lighter than cloud-sql-proxy.service. This process runs
+# ansible-playbook, which SSHes out, writes under $HOME and the data dir, and
+# may run arbitrary local commands from a playbook. Tight confinement would make
+# playbooks fail in ways that look like playbook bugs. What is here costs
+# playbooks nothing: /usr, /boot and /etc stay read-only, no privilege
+# escalation (so a playbook's `become: true` on localhost fails; target
+# remote hosts instead), and a private /tmp.
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

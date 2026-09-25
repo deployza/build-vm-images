@@ -46,6 +46,40 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # Ansible lives in a venv; the pip freeze records the collection package and
+  # the core separately (both pinned), which `ansible --version` alone does not.
+  if [ -x /opt/ansible/venv/bin/ansible ]; then
+    echo "== ansible --version =="
+    /opt/ansible/venv/bin/ansible --version 2>&1 || true
+    echo
+    echo "== ansible venv packages =="
+    /opt/ansible/venv/bin/pip freeze 2>/dev/null || true
+    echo
+  fi
+
+  if command -v semaphore >/dev/null 2>&1; then
+    echo "== semaphore version =="
+    semaphore version 2>&1 || true
+    echo
+  fi
+
+  if command -v clickhouse-server >/dev/null 2>&1; then
+    echo "== clickhouse-server --version =="
+    clickhouse-server --version 2>&1 || true
+    echo
+  fi
+
+  # The plugin list matters as much as Grafana's version: a datasource plugin
+  # that is missing or too old is invisible until someone opens a dashboard.
+  if command -v grafana >/dev/null 2>&1; then
+    echo "== grafana --version =="
+    grafana --version 2>&1 || true
+    echo
+    echo "== grafana plugins =="
+    grafana cli --pluginsDir /var/lib/grafana/plugins plugins ls 2>&1 || true
+    echo
+  fi
+
   # CPython under /opt/python is a SECOND interpreter alongside the distro's
   # (nginx-python flavor). Record both: "which python3 do I get" is the first
   # question anyone debugging this box asks, and the answer differs between a
