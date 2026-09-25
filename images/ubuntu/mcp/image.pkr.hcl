@@ -1,8 +1,9 @@
-# mcp flavor: basics + the code knowledge-graph MCP server (graphify), as systemd.
+# mcp flavor: basics + the runtime of the code knowledge-graph MCP server — a
+# Python venv holding graphify (every tree-sitter grammar) and fastmcp.
 # Family: dz-mcp.
 #
-# The first flavor with no Java and no Tomcat. It bakes a Python venv holding
-# graphify and every tree-sitter grammar, plus the server and refresh units.
+# The first flavor with no Java and no Tomcat. It bakes NO application: the
+# units, helpers, gateway and mcp.env are pushed by build-ops (vm/mcp-vm/).
 # See mcp.md.
 packer {
   required_plugins {
@@ -88,7 +89,7 @@ source "googlecompute" "mcp" {
 
   image_name              = "dz-mcp-${var.image_version}"
   image_family            = "dz-mcp"
-  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} MCP server behind a fastmcp ${var.fastmcp_version} OAuth gateway (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} + fastmcp ${var.fastmcp_version} venv (MCP server runtime; the app is pushed by build-ops). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor   = "mcp"
     graphify = replace(var.graphify_version, ".", "-")
@@ -105,7 +106,7 @@ build {
   }
 
   # Recursive: this also carries the per-component subdirectories of
-  # scripts/ubuntu/ (mcp/, otelcol/, cloud-sql-proxy/, ... -- each holding an
+  # scripts/ubuntu/ (otelcol/, cloud-sql-proxy/, ... -- each holding an
   # installer alongside the units and config files it installs) to the matching
   # subdirectory of /tmp/scripts/.
   provisioner "file" {
@@ -122,7 +123,7 @@ build {
     inline = [
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-gcloud.sh",
-      "bash /tmp/scripts/mcp/install-mcp.sh",
+      "bash /tmp/scripts/install-mcp.sh",
       "bash /tmp/scripts/otelcol/install-otel.sh",
       "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/install-python.sh",

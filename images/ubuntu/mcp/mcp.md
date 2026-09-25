@@ -1,110 +1,75 @@
 # `mcp` image
 
-GCE image family **`dz-mcp`**: Ubuntu + basic tools + gcloud CLI + a dedicated
-unprivileged `mcp` user + [graphify](https://github.com/Graphify-Labs/graphify)
-in a Python venv, exposed as an **MCP server** over Streamable HTTP and refreshed
-hourly, both running as `systemd` units.
+GCE image family **`dz-mcp`**: Ubuntu + basic tools + gcloud CLI + the
+**runtime** of the Deployza MCP server — one Python venv at `/opt/mcp/venv`
+holding [graphify](https://github.com/Graphify-Labs/graphify) (with every
+tree-sitter grammar) and [fastmcp](https://gofastmcp.com).
 
-It keeps a code knowledge graph of the organisation's repositories and serves it
-to Claude Code so it can answer questions that span repos. **graphify is the
-engine, not the product** — the flavor, the units and the helpers are named for
-what this is (an MCP server); `graphify`, `graphifyy` and `graphify.serve` are
-upstream's names and stay as they are.
+**That is all it bakes.** Since image 1-3 this flavor follows the fleet's split:
+the image carries the software, and the application is pushed to a running VM by
+build-ops. Everything that makes the venv *the Deployza MCP server* — the `mcp`
+service user, `/etc/mcp/mcp.env`, the `/usr/local/bin/mcp-*` helpers, the OAuth
+gateway (`mcp_auth_app.py`), the Markdown pass (`mcp-md-graph` and its vendored
+extractor), the sudoers drop-in and all six systemd units — lives in
+[`build-ops/vm/mcp-vm/`](../../../../build-ops/vm/mcp-vm/) and is installed by
+its `mcp` unit:
 
-> **Since image 1-2 this flavor DOES carry application code**, which the rest of
-> the fleet does not: `mcp-md-graph` (ours) and `mcp_md_extract.py`
-> (vendored from graphify, Apache-2.0). Everything else here is still the upstream
-> package plus the units that run it. See *Language coverage* for why.
+```bash
+ansible-playbook playbooks/mcp-vm.yml --tags mcp        # from build-ops/ansible
+sudo bash vm/mcp-vm/install.sh production mcp           # or on the box
+```
 
-The image ships **without** any configuration for a specific deployment and
-**without** any secret. The MCP API key and the read-only GitHub PAT are fetched
-from Secret Manager at run time and never touch the disk.
+The design, the units and the operator runbook are in
+`build-terraform/dz-builds/mcp.md`; the deploy script's header documents
+exactly what it installs.
+
+> **A VM booted from this image serves nothing until that push has run.** There
+> is no unit to start — nothing on the image knows it is the MCP server. Every
+> VM replacement therefore ends with the playbook. From then on the VM needs
+> nothing at boot: the pushed units are enabled and express the whole boot
+> sequence themselves.
+
+**Why the split.** Up to image 1-2 all of the above was baked here, so changing
+one line of `mcp.env` meant a rebake and a VM replacement — which throws away
+`/data` (the graph, the clones, the OAuth token store) and signs everyone out.
+Image 1-2 existed for exactly that: a renamed secret id. Now it is a push and a
+two-second restart.
+
+**Why the venv stays baked.** It is ~191 MB of wheels. Installing it at deploy
+time would make PyPI's availability a deploy-time dependency and cost minutes
+per push on a shared-core e2-micro. It is the runtime, in the same sense Tomcat
+is on the tomcat flavors.
 
 The first flavor with no Java and no Tomcat.
 
-## What runs
-
-| Unit | Type | Does |
-| --- | --- | --- |
-| `mcp-boot.service` | oneshot, at boot | Formats/mounts the data disk, adds swap, creates the service home |
-| `mcp.service` | long-running | Serves the graph on `0.0.0.0:8080/mcp`, API-key gated |
-| `mcp-refresh.timer` | hourly | Fires the refresh |
-| `mcp-refresh.service` | oneshot | Fetches changed repos, rescans, merges, restarts the server if the graph moved |
-| `mcp-refresh-failed.service` | `OnFailure=` | Writes one ERROR to Cloud Logging when a refresh fails |
-
-**The consuming VM needs no startup script.** The whole boot sequence is
-expressed in the units:
-
-```
-mcp-boot.service            mounts /data, swap, service home
-  ├─ mcp.service        Requires= + After= it
-  └─ mcp-refresh.timer      OnBootSec=2min -> first refresh -> first graph
-```
-
-`mcp.service` exits immediately for the first ~2 minutes of a brand-new
-VM's life, because no graph exists yet. That is the designed path, not a fault:
-`Restart=always` retries until the first refresh produces one.
-
-## Where state lives
-
-`/data` holds everything per-instance: the shallow clones, the merged graph, the
-refresh watermark and the swapfile. Everything else — `/opt/mcp/venv` (~191 MB
-with every tree-sitter grammar), `/usr/local/bin/mcp-*`, `/etc/mcp/mcp.env` and
-the systemd units — is baked into this image.
-
-**`/data` is a plain directory on the boot disk.** The boot disk is 20 GB because
-GCE refuses one smaller than the image, and the OS plus venv use ~2.7 GB, leaving
-~12 GB spare — far more than the ~5 GB projected at 200 repos. A dedicated data
-disk was used until 2026-08-31 and bought nothing but a second resource, a
-device-name contract between two repos, and a zonal volume that could not follow
-the VM across regions.
-
-**The trade:** `/data` dies with the boot disk on an image swap, so a replacement
-re-indexes from scratch — measured at ~12 min of CPU for the whole org. Cheap
-against the complexity it removes, and the refresh is designed to rebuild from
-nothing anyway.
-
-**A separate disk is still supported.** Attach one as `device_name = "mcp-data"`
-and `mcp-boot` formats and mounts it exactly as before. That keeps this image
-usable with or without one, so neither repo has to deploy in lockstep.
-
-Two consequences that are easy to get wrong:
-
-- **The service user's home must be under `/data`.** graphify's `global add`
-  writes to `Path.home()/".graphify"` — hardcoded upstream, no flag to redirect
-  it. `install-mcp.sh` creates the user with `--no-create-home` and
-  `--home /data/mcp`; `mcp-boot` creates and chowns it per instance. (`.graphify`
-  inside it is upstream's name and stays.)
-- **The units are enabled but cannot start at bake time.** `mcp-boot.service`
-  does the per-instance work on the real VM, and the others `Requires=` it, so
-  systemd holds them back until it succeeds.
-
-All of this flavor's shell belongs to this repo — `mcp-boot` is baked here rather
-than living in the consuming Terraform as a startup script.
-
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI (also installs `git` and `jq`) + Python (distro `python3`/venv/pip, and the pinned
-  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
-  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
-- `mcp/install-mcp.sh` — `python3-venv`, the `mcp` system user, the
-  venv, the helper binaries, the sudoers drop-in, and the four systemd units
-- `mcp/mcp.env` — all tunables, baked to `/etc/mcp/mcp.env`
-- `mcp/mcp-boot` — per-instance boot work (`/data`, swap, service home)
-- `mcp/mcp-serve` — fetches the API key, exports it, `exec`s the server
-- `mcp/mcp-refresh` — the gated hourly refresh
-- `mcp/mcp-md-graph` — the Markdown pass, plus `--self-test`
-- `mcp/mcp_md_extract.py` — **vendored** (Apache-2.0) Markdown extractor
-- `mcp/gcp-secret` — reads one Secret Manager secret to stdout
-- `mcp/mcp-git-askpass` — feeds the PAT to git without it reaching argv
-- `mcp/mcp-log-failure` — the `OnFailure=` reporter
-- `mcp/*.service`, `graphify/*.timer` — the units
-
-Unlike the other flavors, these live in their **own subdirectory** under
-`scripts/ubuntu/`: none of them is shared with another flavor, and
-`scripts/ubuntu/` proper is for the shared installers.
+- `install-basics.sh`, `install-gcloud.sh`, `install-python.sh` — the baseline
+  every flavor gets (git and jq included; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
+- `install-mcp.sh` — `python3-venv` and the venv:
+  `graphifyy[mcp,terraform,sql]`, `fastmcp` and `py-key-value-aio[disk]`,
+  plus an import smoke test
+- `otelcol/install-otel.sh`, `cloud-sql-proxy/…`, `logs/…`, `write-manifest.sh`
+  — inert on every flavor, as usual
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
+`write-manifest.sh` records the venv's `pip freeze` in `/etc/image-manifest.txt`.
+
+## Compatibility checks moved to the push
+
+Two checks guard the seam between our code and the upstream packages. They
+were bake-time checks while the code was baked; they now run in
+`build-ops/vm/mcp-vm/mcp.sh` **before it installs anything**, against the
+files being pushed and this image's venv:
+
+- **Gateway import check** — `mcp_auth_app.py` imports eight symbols from six
+  fastmcp submodules, and fastmcp is pre-1.0.
+- **Vendored-extractor drift check** — see *Markdown* below.
+
+So a `GRAPHIFY_VERSION` or `FASTMCP_VERSION` bump that breaks either now fails
+the **first push** to a VM on the new image, while the old install keeps
+serving — not the bake. Before replacing the live VM with a bumped image, push
+to a scratch VM booted from it, or run the pre-flight by hand on one.
 
 > **`v8` is the only reliable reference.** The published graphify documentation
 > and the repo's `main` branch both disagree with the shipping code. Behavioural
@@ -124,25 +89,25 @@ image installs `graphifyy[mcp,terraform,sql]`.
 | Terraform / HCL | ✅ `[terraform]` | **0 nodes** without the extra, 338 nodes / 777 edges with it — silent, not an error |
 | SQL schemas | ✅ `[sql]` | warns until added |
 | Static UI (HTML/CSS) | ❌ **none** | no HTML or CSS grammar exists, even under `[all]` |
-
 | **Markdown** | ✅ **no grammar, no LLM** | vendored extractor, see below. `build-docs`: 63 nodes / 75 edges, 0 tokens |
+
+## Markdown
 
 Markdown is classified by graphify as a *document*, and documents go through
 LLM-based extraction — so `--code-only` skips them and a scan without it
 hard-fails asking for a key. But graphify **also ships a deterministic Markdown
 extractor** that needs no LLM at all; it is simply unreachable from the CLI.
-`mcp-md-graph` calls it directly, as a second pass per repo, merging doc
-nodes into the same `graph.json` before `global add`.
+`mcp-md-graph` (build-ops) calls it directly, as a second pass per repo,
+merging doc nodes into the same `graph.json` before `global add`.
 
 That extractor is **vendored** into `mcp_md_extract.py` rather than imported,
 because reaching graphify's own requires four private symbols — one of them a
 module global read via `getattr(..., None)`, so an upstream rename would not
 raise, it would silently stop resolving links. The vendored copy is verified
-byte-identical to the library's output, and `install-mcp.sh` re-checks that
-at **bake time** against a fixture: a `GRAPHIFY_VERSION` bump that changes
-extraction fails the image build rather than shipping stale behaviour.
+byte-identical to the library's output, and the push re-checks that against a
+fixture before it installs anything.
 
-To check drift by hand after an upgrade:
+To check drift by hand on a running VM:
 
 ```bash
 /opt/mcp/venv/bin/python /usr/local/bin/mcp-md-graph \
@@ -203,3 +168,4 @@ Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 | ------- | ---------- | ----------------------------------- |
 | 1-0     | 2026-08-31 | Initial `mcp` image. Renamed wholesale from the former `graphify` family — flavor, units, helpers, service user, venv and env file all now say `mcp`; only upstream's own names (`graphifyy`, `graphify.serve`, `GRAPHIFY_API_KEY`, `.graphify`) are unchanged. `/data` moves onto the boot disk, so no `attached_disk` is required; `mcp-boot` still mounts one if present. Carries forward everything the `graphify` family had learned — the gcloud `CLOUDSDK_CONFIG` fix, per-repo failure tolerance in the refresh, and the tokenless Markdown pass with its vendored extractor and bake-time drift check. |
 | 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT is now shared with `website-vm`'s docs-refresh; see `../../docs/apidocs-vm-build-plan.md`). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
+| 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |

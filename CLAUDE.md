@@ -56,20 +56,28 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > `bash /tmp/scripts/<flavor>/install-<flavor>.sh`. The `file` provisioner copies
 > `scripts/<os>/` recursively, so the subdirectory arrives at
 > `/tmp/scripts/<flavor>/` with no template change beyond that path.
-> `mcp` is the first flavor to do this (15 files: units, helper binaries, its env
-> file and a vendored extractor). Keep genuinely shared installers flat — this is for
-> single-flavor payloads, not a general reorganisation.
+> `tomcat/`, `semaphore/` and `clickhouse/` do this today. Keep genuinely shared
+> installers flat — this is for single-flavor payloads, not a general
+> reorganisation. (`mcp/` did it until image 1-3; its payload was the
+> application, not the software, and moved to build-ops — see below.)
+
+> **Software in the image, the application in build-ops.** An image bakes the
+> runtime an app needs (a JDK, Tomcat, nginx, a Python venv); the app itself, its
+> config and its systemd units are pushed to a running VM by `build-ops`
+> (`vm/<vm>/<app>.sh`, driven by Ansible). The `mcp` flavor broke this until
+> image 1-3 by baking the whole MCP server — its gateway code, helpers, units
+> and `mcp.env` — so a config change meant a rebake and a VM replacement. It now
+> bakes only `/opt/mcp/venv`; the rest is `build-ops/vm/mcp-vm/`. Hold new
+> flavors to the same line.
 
 > **Why some scripts have no `.sh`.** The extension tracks **how the file is
 > invoked**. Handed to an interpreter (`bash /tmp/scripts/install-basics.sh`) →
 > keep it. Installed to `/usr/local/bin` and invoked as a command → drop it, and
-> name the file in-tree exactly as it is installed. That is all seven `mcp`
-> helpers (`gcp-secret`, `mcp-serve`, `mcp-refresh`, `mcp-boot`,
-> …), each called by name from a systemd `ExecStart=` or from git's `GIT_ASKPASS`.
-> It also keeps the set honest: `mcp-md-graph` is **Python**, and `.py` is
-> reserved for `mcp_md_extract.py`, which really is an importable module.
-> The shebang carries the language for editors and for graphify's own indexer,
-> but a `**/*.sh` glob will skip these — **lint by shebang, not by extension**.
+> name the file in-tree exactly as it is installed. The `mcp` helpers followed
+> this rule while they lived here (they are in `build-ops/vm/mcp-vm/mcp/` now,
+> same names). The shebang carries the language for editors and for graphify's
+> own indexer, but a `**/*.sh` glob will skip such files — **lint by shebang,
+> not by extension**.
 > Upstream names (Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
 > choose.
 
@@ -298,8 +306,7 @@ build-vm-images/
       logs/
         logs-system.sh        # host-wide journald + logrotate policy (every flavor)
         logs-disk-tools.sh    # disk-audit / disk-alert helpers (every flavor)
-      mcp/                    # graphify MCP server: units, helper binaries, mcp.env
-        install-mcp.sh
+      install-mcp.sh          # graphify + fastmcp venv ONLY (mcp); the app is build-ops'
         ...
   images/
     ubuntu/
@@ -418,10 +425,10 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `tomcat` (family `dz-tomcat`): basic tools + Java + Tomcat (the primary flavor).
 - `mysql` (family `dz-mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `dz-tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
-- `mcp` (family `dz-mcp`): basic tools + a Python venv holding graphify and
-  its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
-  **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
-  keeps its assets in `scripts/ubuntu/mcp/`. See `images/ubuntu/mcp/mcp.md`.
+- `mcp` (family `dz-mcp`): basic tools + a Python venv holding graphify (with
+  its tree-sitter grammars) and fastmcp — the MCP server's runtime only. The
+  server, gateway, refresh and their units are pushed by
+  `build-ops/vm/mcp-vm/`. **No Java, no Tomcat.** See `images/ubuntu/mcp/mcp.md`.
 - `tomcat-mysql-nginx` (family `dz-tomcat-mysql-nginx`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image
