@@ -40,7 +40,7 @@ plugins installed — not a `www-apidocs` checkout, not a build, and no
 [`../../../docs/apidocs-vm-build-plan.md`](../../../docs/apidocs-vm-build-plan.md)
 for the full design (`website-vm` clones `www-apidocs` from GitHub and runs
 `mkdocs build --strict` itself, on a systemd timer owned by
-`build-app-install`, instead of Cloud Build producing `site/` for the VM to
+`build-ops`, instead of Cloud Build producing `site/` for the VM to
 pull from GCS).
 
 Baked at `/opt/mkdocs/venv` — same self-contained-venv pattern as the `mcp`
@@ -86,7 +86,7 @@ deployed should not pretend to serve one.
 
 ### The app.d / site.d contract
 
-The per-app deploy script (`build-app-install/vm/<app>.sh`) writes
+The per-app deploy script (`build-ops/vm/<app>.sh`) writes
 `/etc/nginx/app.d/<app>.conf` containing **only location blocks** (no
 `server{}` wrapper — they are included inside the baked server block), then
 runs `nginx -t && systemctl reload nginx`. The same contract is documented in
@@ -110,7 +110,7 @@ instead, the same `ziniapps-*.sh` pattern already used against
 `install-nginx.sh`-baked images. **`/etc/nginx/site.d/` is not baked into this
 image** — the deploy script creates the directory and adds the
 `include /etc/nginx/site.d/*.conf;` line to `nginx.conf` itself, the first time
-it runs. See `build-app-install`'s `ziniapps-go.sh` (`ensure_site_d_include`)
+it runs. See `build-ops`'s `ziniapps-go.sh` (`ensure_site_d_include`)
 for the mechanics and the reasoning for keeping `site.d` and `app.d` separate.
 
 Do not edit `conf.d/static.conf` in place on a running VM — the next image

@@ -5,7 +5,7 @@
 # /etc/nginx/app.d/ drop-in dir, and the /nginx-health endpoint. It bakes NO
 # routing — which paths are static and which serve what content is an
 # application decision, supplied at deploy time by
-# build-app-install/vm/<app>.sh, exactly as MySQL is baked without
+# build-ops/vm/<app>.sh, exactly as MySQL is baked without
 # credentials.
 #
 # This is install-nginx.sh's Tomcat-free sibling, not a reuse of it:
@@ -67,11 +67,11 @@ rm -f /etc/nginx/conf.d/default.conf
 #   * the :80 server block and the /nginx-health endpoint
 #   * an EMPTY /etc/nginx/app.d/ that the server block includes
 #
-# The per-app deploy script (build-app-install/vm/<app>.sh) drops its own
+# The per-app deploy script (build-ops/vm/<app>.sh) drops its own
 # location blocks into /etc/nginx/app.d/<app>.conf and reloads nginx (or, for a
 # per-HOST app that wants the whole server block to itself, writes into
 # /etc/nginx/site.d/ instead — that directory is created by the deploy script,
-# not baked here; see build-app-install's ziniapps-*.sh for the contract).
+# not baked here; see build-ops's ziniapps-*.sh for the contract).
 # Nothing in this image dictates the URL layout.
 mkdir -p /etc/nginx/app.d
 mkdir -p /var/www/app
@@ -111,7 +111,7 @@ Per-app nginx routing drop-ins.
 
 The baked image deliberately ships NO routing: which paths are served and what
 they serve is an application decision, supplied at deploy time by
-build-app-install/vm/<app>.sh — the same way MySQL credentials are.
+build-ops/vm/<app>.sh — the same way MySQL credentials are.
 
 Drop a <app>.conf here containing ONLY location blocks (no server{} wrapper —
 these are included inside the :80 server block) and reload:

@@ -345,14 +345,14 @@ Collector (contrib) plus `otelcol.service`, with `otelcol-base.yaml` baked as
 running and healthy but **reads nothing and exports nowhere**.
 
 Real configuration is **pushed** to a running VM over SSH from
-`build-app-install/otel/`, which swaps `config.yaml` and restarts the service.
+`build-ops/otel/`, which swaps `config.yaml` and restarts the service.
 Nothing on the VM clones, pulls or polls for it, and no collector config belongs
 in this repo beyond the inert base.
 
 Two things to know before touching it:
 
 - **`versions.env` here is the only `OTELCOL_VERSION` pin.**
-  `build-app-install/otel/cloudbuild.yaml` held a second copy until it was
+  `build-ops/otel/cloudbuild.yaml` held a second copy until it was
   deleted on 2026-09-24 (that repo is not connected to Cloud Build, so nothing
   ever triggered the job). There is now no CI on the otel configs at all —
   `push.sh --dry-run` validates against whatever `otelcol-contrib` the pusher

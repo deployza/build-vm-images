@@ -4,7 +4,7 @@
 # This bakes the MECHANISM only: the :80 server block, a Tomcat upstream, a
 # reusable proxy snippet, and an empty /etc/nginx/app.d/ drop-in dir. It bakes NO
 # routing — which paths are static and which proxy to Tomcat is an application
-# decision, supplied at deploy time by build-app-install/vm/<app>.sh, exactly as
+# decision, supplied at deploy time by build-ops/vm/<app>.sh, exactly as
 # MySQL is baked without credentials.
 #
 # nginx comes from the official nginx.org stable apt repository rather than
@@ -57,7 +57,7 @@ rm -f /etc/nginx/conf.d/default.conf
 #     boilerplate as a reusable snippet (proxy-to-tomcat.conf)
 #   * an EMPTY /etc/nginx/app.d/ that the server block includes
 #
-# The per-app deploy script (build-app-install/vm/<app>.sh) drops its own
+# The per-app deploy script (build-ops/vm/<app>.sh) drops its own
 # location blocks into /etc/nginx/app.d/<app>.conf and reloads nginx. Nothing in
 # this image dictates the URL layout.
 #
@@ -133,7 +133,7 @@ Per-app nginx routing drop-ins.
 
 The baked image deliberately ships NO routing: which paths are static and which
 proxy to Tomcat is an application decision, supplied at deploy time by
-build-app-install/vm/<app>.sh — the same way MySQL credentials are.
+build-ops/vm/<app>.sh — the same way MySQL credentials are.
 
 Drop a <app>.conf here containing ONLY location blocks (no server{} wrapper —
 these are included inside the :80 server block) and reload:

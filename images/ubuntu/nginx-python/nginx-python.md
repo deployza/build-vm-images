@@ -34,7 +34,7 @@ nginx that answers `/nginx-health` and 404s everything else — exactly the
 mechanism/policy split the rest of the fleet follows (MySQL is baked without
 credentials; `install-nginx-static.sh` is baked without `location` blocks).
 
-The per-app deploy script (`build-app-install/vm/<app>.sh`) owns all three
+The per-app deploy script (`build-ops/vm/<app>.sh`) owns all three
 pieces that make it serve something:
 
 1. a venv of its own, `/opt/python/latest/bin/python3 -m venv /opt/<app>/venv`,

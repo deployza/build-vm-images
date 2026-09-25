@@ -11,7 +11,7 @@
 # empty config is therefore a DEAD service, not an idle one — and a dead
 # collector looks exactly like a healthy one that has nothing to report.
 #
-# This file is REPLACED WHOLE by build-app-install/otel/apply.sh when a real
+# This file is REPLACED WHOLE by build-ops/otel/apply.sh when a real
 # config is pushed. Do not add anything here that a pushed config would need to
 # preserve: nothing merges, the file is swapped.
 

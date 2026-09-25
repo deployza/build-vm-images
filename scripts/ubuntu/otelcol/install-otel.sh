@@ -5,7 +5,7 @@
 # WHAT THIS BAKES IS ONLY THE MECHANISM. The collector installed here watches
 # nothing and sends nowhere: /etc/otelcol/config.yaml is an inert nop pipeline
 # (otelcol-base.yaml). Real configuration is PUSHED to a running VM over SSH by
-# build-app-install/otel/apply.sh, which swaps that file and restarts the
+# build-ops/otel/apply.sh, which swaps that file and restarts the
 # service. Nothing on the VM pulls, clones or polls for config.
 #
 # See ../../../build-docs/ops-execution.md for the full design and the reasoning
@@ -115,5 +115,5 @@ systemctl enable otelcol.service
 
 echo "otelcol-contrib ${OTELCOL_VERSION} installed and enabled (inert until a"
 echo "config is pushed). It collects NOTHING and exports NOWHERE as baked —"
-echo "see build-app-install/otel/ for the push side."
+echo "see build-ops/otel/ for the push side."
 exit 0

@@ -15,7 +15,7 @@ Group=otelcol
 Type=simple
 ExecStart=/opt/otelcol/bin/otelcol-contrib --config=/etc/otelcol/config.yaml
 
-# Exporter endpoint and credentials, written by build-app-install/otel/apply.sh
+# Exporter endpoint and credentials, written by build-ops/otel/apply.sh
 # and referenced from the config as ${env:OTEL_*}. Leading "-" so the unit still
 # starts when the file is absent, which is the state of every freshly baked
 # image: the inert base config reads no environment at all.
@@ -27,7 +27,7 @@ ExecStart=/opt/otelcol/bin/otelcol-contrib --config=/etc/otelcol/config.yaml
 EnvironmentFile=-/etc/otelcol/env
 
 # THERE IS NO ExecReload. The collector does not reliably reload its config on
-# SIGHUP, so build-app-install/otel/apply.sh RESTARTS the service after swapping
+# SIGHUP, so build-ops/otel/apply.sh RESTARTS the service after swapping
 # the config and then health-checks it. Adding a reload here would give apply.sh
 # a way to silently do nothing.
 

@@ -71,7 +71,7 @@ should not pretend to serve one.
 
 ### The app.d contract
 
-The per-app deploy script (`build-app-install/vm/<app>.sh`) writes
+The per-app deploy script (`build-ops/vm/<app>.sh`) writes
 `/etc/nginx/app.d/<app>.conf` containing **only location blocks** (no `server{}`
 wrapper — they are included inside the baked server block), then runs
 `nginx -t && systemctl reload nginx`. The same contract is documented in
