@@ -70,16 +70,19 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > reserved for `mcp_md_extract.py`, which really is an importable module.
 > The shebang carries the language for editors and for graphify's own indexer,
 > but a `**/*.sh` glob will skip these — **lint by shebang, not by extension**.
-> Upstream names (`gitea`, Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
+> Upstream names (Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
 > choose.
 
-> **Current state.** Ten flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
-> `java`, `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`, `git` (Gitea),
+> `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-nginx-mysql`,
 > `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
-> static web front door), `nginx-python` (that front door plus a CPython
-> runtime) and `ops` (Ansible + Semaphore UI + ClickHouse + Grafana) — `mcp`,
-> `nginx`, `nginx-python` and `ops` are the flavors with no Java.
+> static web front door) and `ops` (Ansible + Semaphore UI + ClickHouse +
+> Grafana) — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
+> image family is the flavor name with a `dz-` prefix (`dz-tomcat`).
+> The `java`, `git` (Gitea) and `nginx-python` flavors were removed on
+> 2026-09-25: nothing launched them, and with pinned CPython on every flavor
+> `nginx-python` no longer differed usefully from `nginx`.
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -123,7 +126,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
-- Image **names** (`<flavor>-<version>`) are unique per project: rebuilding an
+- Image **names** (`dz-<flavor>-<version>`) are unique per project: rebuilding an
   existing version hard-fails at image-create (GCE `409 alreadyExists`) and never
   overwrites. Bump `image_version` to publish; the family pointer advances on its
   own. No explicit pre-check is needed — GCE enforces this.
@@ -284,9 +287,6 @@ build-vm-images/
         install-cloud-sql-proxy.sh  # Cloud SQL Auth Proxy, INERT (every flavor)
         cloud-sql-proxy.service # proxy unit — installed but NOT enabled at bake
         cloud-sql-proxy.env   # the empty instance config baked as /etc/cloud-sql-proxy/env
-      gitea/
-        install-gitea.sh
-        gitea.service
       semaphore/
         install-semaphore.sh
         semaphore.service     # installed but NOT enabled at bake (no config yet)
@@ -303,10 +303,6 @@ build-vm-images/
         ...
   images/
     ubuntu/
-      java/
-        image.pkr.hcl
-        cloudbuild.yaml
-        java.md
       tomcat/
         image.pkr.hcl
         cloudbuild.yaml
@@ -414,37 +410,25 @@ Three things to know before touching it:
 
 ### Image composition guidance
 
-Each `images/<os>/<flavor>/` folder produces one image **family**. The flavor folder
-name and the family name match. The `tomcat` flavor is the one `build-system.md`
+Each `images/<os>/<flavor>/` folder produces one image **family**, named
+`dz-<flavor>` — the folder stays unprefixed, the family carries the `dz-`
+prefix. The `tomcat` flavor is the one `build-system.md`
 uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 
-- `java` (family `java`): basic tools + Java only.
-- `tomcat` (family `tomcat`): basic tools + Java + Tomcat (the primary flavor).
-- `mysql` (family `mysql`): basic tools + MySQL daemon only.
-- `tomcat-mysql` (family `tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
-- `mcp` (family `mcp`): basic tools + a Python venv holding graphify and
+- `tomcat` (family `dz-tomcat`): basic tools + Java + Tomcat (the primary flavor).
+- `mysql` (family `dz-mysql`): basic tools + MySQL daemon only.
+- `tomcat-mysql` (family `dz-tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
+- `mcp` (family `dz-mcp`): basic tools + a Python venv holding graphify and
   its tree-sitter grammars, plus the MCP server and hourly-refresh systemd units.
   **No Java, no Tomcat** — the one flavor outside the Java line, and the one that
   keeps its assets in `scripts/ubuntu/mcp/`. See `images/ubuntu/mcp/mcp.md`.
-- `tomcat-nginx-mysql` (family `tomcat-nginx-mysql`): the above plus nginx on
+- `tomcat-nginx-mysql` (family `dz-tomcat-nginx-mysql`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image
   ships an empty `/etc/nginx/app.d/` that the app deploy script writes into, the
   same way MySQL is baked without credentials. Do not add app-specific
   `location` blocks to `install-nginx.sh`.
-- `nginx-python` (family `nginx-python`): basic tools + nginx (static, via
-  `install-nginx-static.sh`), for a VM serving a **Python** app behind nginx.
-  Note what actually distinguishes it: **not** the interpreter (every flavor
-  has the pinned CPython — see the Python note at the end of this section),
-  but the *absence* of `install-mkdocs.sh`. It is the `nginx` flavor without
-  that venv, which is a `www-apidocs` build dependency and dead weight on an
-  ordinary Python app box. The name is kept because it says what the box is
-  for. **No WSGI server and no routing are baked** — no gunicorn, no unit, no
-  `proxy-to-python.conf`; the app deploy script brings its own venv, its own
-  service and its own `/etc/nginx/app.d/<app>.conf`. Tomcat flavors bake an
-  upstream because Tomcat *is* the runtime; Python has no such single right
-  answer. See `images/ubuntu/nginx-python/nginx-python.md`.
-- `nginx` (family `nginx`): basic tools + nginx only, serving static content.
+- `nginx` (family `dz-nginx`): basic tools + nginx only, serving static content.
   **No Java, no Tomcat, no MySQL** — for a VM that is a pure web front door
   with no app server of its own. Uses its own installer,
   `install-nginx-static.sh`, rather than `install-nginx.sh`: the latter bakes
@@ -452,9 +436,9 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   weight here. Same empty `/etc/nginx/app.d/` + `/nginx-health` seam and
   README contract as `install-nginx.sh`, just without the Tomcat pieces. See
   `images/ubuntu/nginx/nginx.md`.
-- `ops` (family `ops`): basic tools + Ansible (venv) + Semaphore UI +
+- `ops` (family `dz-ops`): basic tools + Ansible (venv) + Semaphore UI +
   ClickHouse + Grafana with the ClickHouse datasource plugin. **No Java, no
-  Tomcat, no nginx.** Named for its purpose, like `git` and `mcp`, rather than
+  Tomcat, no nginx.** Named for its purpose, like `mcp`, rather than
   by joining tool names: four tools made that name too long. Only ClickHouse is enabled
   (loopback-only, safe as baked). Grafana (it would boot into `admin/admin`) and
   Semaphore (it cannot start without its secrets) are installed but **not
@@ -496,9 +480,11 @@ software, not the source.
 Naming convention: a flavor named after a tool includes that tool plus its
 prerequisites (so `tomcat` ⇒ Java, no redundant `java-` prefix). Combined
 flavors join the tool names with `-` (`tomcat-mysql`). The image **family** is
-the bare flavor name (e.g. `tomcat`); the tool version lives in the `image_name`
-(`tomcat-1-0-0`) and in image **labels** — never in the family — so consumers
-track `--image-family=tomcat` without ever chasing minor-version bumps.
+the flavor name with a `dz-` prefix (e.g. `dz-tomcat`), which marks our images
+apart from public ones in a GCE image listing; the version lives in the
+`image_name` (`dz-tomcat-1-1`) and in image **labels** — never in the family — so
+consumers track `--image-family=dz-tomcat` without ever chasing minor-version
+bumps. The `flavor` label and `IMAGE_FLAVOR` stay the bare flavor name.
 
 Each image runs `install-basics.sh` then `install-gcloud.sh` first, then the
 additional installer scripts required by that flavor, then `install-otel.sh` +
@@ -566,6 +552,5 @@ additional installer scripts required by that flavor, then `install-otel.sh` +
 >
 > **Python is not an image label.** Labels carry what distinguishes a flavor,
 > and baseline tools (git and curl from `install-basics.sh`, gcloud from
-> `install-gcloud.sh`) have never been labelled. `nginx-python` is the single
-> exception, because it is named after it. The version is in
+> `install-gcloud.sh`) have never been labelled. The version is in
 > `/etc/image-manifest.txt` on every image.

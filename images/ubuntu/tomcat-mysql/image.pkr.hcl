@@ -1,5 +1,5 @@
 # tomcat-mysql flavor: basics + Java + Tomcat (systemd) + MySQL (systemd).
-# Family: tomcat-mysql. App server and database co-located on one VM.
+# Family: dz-tomcat-mysql. App server and database co-located on one VM.
 packer {
   required_plugins {
     googlecompute = {
@@ -84,8 +84,8 @@ source "googlecompute" "tomcat_mysql" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "tomcat-mysql-${var.image_version}"
-  image_family            = "tomcat-mysql"
+  image_name              = "dz-tomcat-mysql-${var.image_version}"
+  image_family            = "dz-tomcat-mysql"
   image_description       = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd) + MySQL ${var.mysql_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "tomcat-mysql"

@@ -1,4 +1,4 @@
-# mysql flavor: basics + MySQL daemon (as systemd). Family: mysql.
+# mysql flavor: basics + MySQL daemon (as systemd). Family: dz-mysql.
 packer {
   required_plugins {
     googlecompute = {
@@ -73,8 +73,8 @@ source "googlecompute" "mysql" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "mysql-${var.image_version}"
-  image_family            = "mysql"
+  image_name              = "dz-mysql-${var.image_version}"
+  image_family            = "dz-mysql"
   image_description       = "${var.source_image_family} + MySQL ${var.mysql_version} daemon (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "mysql"

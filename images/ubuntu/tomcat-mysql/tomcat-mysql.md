@@ -1,6 +1,6 @@
 # `tomcat-mysql` image
 
-GCE image family **`tomcat-mysql`**: Ubuntu + basic tools + gcloud CLI + JDK +
+GCE image family **`dz-tomcat-mysql`**: Ubuntu + basic tools + gcloud CLI + JDK +
 Apache Tomcat (systemd) + MySQL Server (distro `mysql-server` + `mysql-client`,
 8.0.x, systemd). App server and
 database co-located on one VM — convenient for single-node deployments.
@@ -33,9 +33,9 @@ gcloud builds submit --config images/ubuntu/tomcat-mysql/cloudbuild.yaml .
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
-one. (The `tomcat-mysql` family pointer just moves to the newest image.)
+one. (The `dz-tomcat-mysql` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=tomcat-mysql --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-tomcat-mysql --image-project=dz-builds`.
 
 ## Changelog
 

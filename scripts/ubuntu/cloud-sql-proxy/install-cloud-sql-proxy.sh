@@ -35,7 +35,7 @@ CSP_CONF_DIR=/etc/cloud-sql-proxy
 CSP_URL="https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v${CLOUD_SQL_PROXY_VERSION}/cloud-sql-proxy.linux.amd64"
 
 # NO CHECKSUM VERIFICATION, deliberately — matching install-java.sh,
-# install-tomcat.sh, install-gitea.sh and install-otel.sh. TLS to the release
+# install-tomcat.sh and install-otel.sh. TLS to the release
 # host is the trust boundary and the pin in versions.env is what makes the bake
 # reproducible. (Upstream publishes no .sha256 next to this object.)
 

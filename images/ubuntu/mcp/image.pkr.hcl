@@ -1,5 +1,5 @@
 # mcp flavor: basics + the code knowledge-graph MCP server (graphify), as systemd.
-# Family: mcp.
+# Family: dz-mcp.
 #
 # The first flavor with no Java and no Tomcat. It bakes a Python venv holding
 # graphify and every tree-sitter grammar, plus the server and refresh units.
@@ -86,8 +86,8 @@ source "googlecompute" "mcp" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "mcp-${var.image_version}"
-  image_family            = "mcp"
+  image_name              = "dz-mcp-${var.image_version}"
+  image_family            = "dz-mcp"
   image_description       = "${var.source_image_family} + graphify ${var.graphify_version} MCP server behind a fastmcp ${var.fastmcp_version} OAuth gateway (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor   = "mcp"

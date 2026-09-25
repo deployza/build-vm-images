@@ -1,6 +1,6 @@
 # ops flavor: basics + Ansible + Semaphore UI (web UI for Ansible) + ClickHouse
 # + Grafana with the ClickHouse datasource plugin.
-# Family: ops.
+# Family: dz-ops.
 #
 # No Java, no Tomcat, no nginx. Named for its purpose, like git and mcp, rather
 # than by joining its four tool names, which made the name too long. See ops.md.
@@ -92,8 +92,8 @@ source "googlecompute" "ops" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name        = "ops-${var.image_version}"
-  image_family      = "ops"
+  image_name        = "dz-ops-${var.image_version}"
+  image_family      = "dz-ops"
   image_description = "${var.source_image_family} + Semaphore UI ${var.semaphore_version} + Ansible ${var.ansible_version} + ClickHouse ${var.clickhouse_version} + Grafana ${var.grafana_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor     = "ops"

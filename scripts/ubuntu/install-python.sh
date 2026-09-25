@@ -25,8 +25,8 @@
 # than a named patch — an apt-based image would silently acquire a different
 # interpreter on every rebuild. python.org's source tarball is the only
 # official artifact for an exact X.Y.Z, so PYTHON_VERSION in versions.env is a
-# full patch version and this script compiles it. Like install-java.sh and
-# install-gitea.sh, the download is trusted on HTTPS from the vendor with no
+# full patch version and this script compiles it. Like install-java.sh, the
+# download is trusted on HTTPS from the vendor with no
 # separate checksum step.
 #
 # THE SYSTEM PYTHON IS LEFT ALONE. Ubuntu's /usr/bin/python3 stays 3.12 and is

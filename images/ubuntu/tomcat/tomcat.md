@@ -1,6 +1,6 @@
 # `tomcat` image
 
-GCE image family **`tomcat`**: Ubuntu + basic tools + gcloud CLI + JDK + Apache
+GCE image family **`dz-tomcat`**: Ubuntu + basic tools + gcloud CLI + JDK + Apache
 Tomcat running as a `systemd` service. This is the original/primary flavor.
 
 Maven is **not** installed — WARs are built by the docker `maven` image at build
@@ -69,9 +69,9 @@ gcloud builds submit --config images/ubuntu/tomcat/cloudbuild.yaml .
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
-one. (The `tomcat` family pointer just moves to the newest image.)
+one. (The `dz-tomcat` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=tomcat --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-tomcat --image-project=dz-builds`.
 
 ## Changelog
 

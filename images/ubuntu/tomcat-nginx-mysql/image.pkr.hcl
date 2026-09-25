@@ -1,6 +1,6 @@
 # tomcat-nginx-mysql flavor: basics + Java + Tomcat (systemd) + nginx (systemd,
 # reverse proxy to Tomcat) + MySQL (systemd).
-# Family: tomcat-nginx-mysql. Web front door, app server and database co-located
+# Family: dz-tomcat-nginx-mysql. Web front door, app server and database co-located
 # on one VM.
 packer {
   required_plugins {
@@ -91,8 +91,8 @@ source "googlecompute" "tomcat_nginx_mysql" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "tomcat-nginx-mysql-${var.image_version}"
-  image_family            = "tomcat-nginx-mysql"
+  image_name              = "dz-tomcat-nginx-mysql-${var.image_version}"
+  image_family            = "dz-tomcat-nginx-mysql"
   image_description       = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd) + nginx ${var.nginx_version} (systemd, reverse proxy to Tomcat) + MySQL ${var.mysql_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "tomcat-nginx-mysql"

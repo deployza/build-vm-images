@@ -1,6 +1,6 @@
 # `mcp` image
 
-GCE image family **`mcp`**: Ubuntu + basic tools + gcloud CLI + a dedicated
+GCE image family **`dz-mcp`**: Ubuntu + basic tools + gcloud CLI + a dedicated
 unprivileged `mcp` user + [graphify](https://github.com/Graphify-Labs/graphify)
 in a Python venv, exposed as an **MCP server** over Streamable HTTP and refreshed
 hourly, both running as `systemd` units.
@@ -193,9 +193,9 @@ gcloud builds submit \
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
-one. (The `mcp` family pointer just moves to the newest image.)
+one. (The `dz-mcp` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=mcp --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 
 ## Changelog
 

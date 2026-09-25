@@ -1,4 +1,4 @@
-# tomcat flavor: basics + Java + Tomcat (as systemd). Family: tomcat.
+# tomcat flavor: basics + Java + Tomcat (as systemd). Family: dz-tomcat.
 # (Tomcat implies Java; Maven is intentionally NOT installed — the WAR is built
 # by the docker maven image at build time, not on the runtime VM.)
 packer {
@@ -80,8 +80,8 @@ source "googlecompute" "tomcat" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "tomcat-${var.image_version}"
-  image_family            = "tomcat"
+  image_name              = "dz-tomcat-${var.image_version}"
+  image_family            = "dz-tomcat"
   image_description       = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "tomcat"

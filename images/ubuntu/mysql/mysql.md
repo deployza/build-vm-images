@@ -1,6 +1,6 @@
 # `mysql` image
 
-GCE image family **`mysql`**: Ubuntu + basic tools + gcloud CLI + MySQL Server
+GCE image family **`dz-mysql`**: Ubuntu + basic tools + gcloud CLI + MySQL Server
 (distro `mysql-server` + `mysql-client`, 8.0.x) running as a `systemd` service.
 
 The server is baked with no root password and bound to `127.0.0.1`. The
@@ -29,9 +29,9 @@ gcloud builds submit --config images/ubuntu/mysql/cloudbuild.yaml .
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —
 GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a new
-one. (The `mysql` family pointer just moves to the newest image.)
+one. (The `dz-mysql` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=mysql --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-mysql --image-project=dz-builds`.
 
 ## Changelog
 

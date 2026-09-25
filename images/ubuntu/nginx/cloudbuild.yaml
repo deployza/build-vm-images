@@ -9,7 +9,7 @@ options:
 timeout: 3600s
 
 substitutions:
-  _IMAGE_VERSION: '1-1'
+  _IMAGE_VERSION: '1-2'
 
 steps:
   - name: 'hashicorp/packer'

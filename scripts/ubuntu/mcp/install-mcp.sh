@@ -4,7 +4,7 @@
 # graphify ships as the PyPI package `graphifyy`. This bakes it into a
 # self-contained venv under /opt/mcp, creates the unprivileged service user,
 # and installs the units plus their helper binaries. Nothing is configured for a
-# specific deployment and no secret is baked — same contract as install-gitea.sh:
+# specific deployment and no secret is baked:
 # the units are ENABLED but cannot come up until the VM's boot script mounts the
 # data disk. See build-system.md §3.
 #

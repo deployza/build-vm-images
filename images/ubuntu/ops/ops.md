@@ -1,6 +1,6 @@
 # `ops` image
 
-GCE image family **`ops`**. It contains Ubuntu, the basic tools and the gcloud
+GCE image family **`dz-ops`**. It contains Ubuntu, the basic tools and the gcloud
 CLI, plus:
 
 - **Ansible**: a pinned venv, with its commands on PATH.
@@ -82,7 +82,7 @@ Bump `_IMAGE_VERSION` to publish a new image. Re-running an existing version
 fails with GCE `409 alreadyExists`.
 
 Consumers launch with
-`--image-family=ops --image-project=dz-builds`.
+`--image-family=dz-ops --image-project=dz-builds`.
 Give the VM **at least 8 GB of RAM** (e2-standard-2 or larger): ClickHouse is
 capped at 60% of it, and Ansible runs need the rest.
 

@@ -40,12 +40,6 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
-  if command -v gitea >/dev/null 2>&1; then
-    echo "== gitea --version =="
-    gitea --version 2>&1 || true
-    echo
-  fi
-
   # Ansible lives in a venv; the pip freeze records the collection package and
   # the core separately (both pinned), which `ansible --version` alone does not.
   if [ -x /opt/ansible/venv/bin/ansible ]; then
@@ -81,7 +75,7 @@ MANIFEST=/etc/image-manifest.txt
   fi
 
   # CPython under /opt/python is a SECOND interpreter alongside the distro's
-  # (nginx-python flavor). Record both: "which python3 do I get" is the first
+  # (every flavor). Record both: "which python3 do I get" is the first
   # question anyone debugging this box asks, and the answer differs between a
   # login shell (/etc/profile.d puts /opt/python/latest first) and a systemd
   # unit or apt shebang (still /usr/bin/python3).

@@ -1,6 +1,6 @@
 # nginx flavor: basics + nginx (systemd), serving static content. No Java, no
 # Tomcat, no MySQL — the lean, Tomcat-free web front door.
-# Family: nginx.
+# Family: dz-nginx.
 packer {
   required_plugins {
     googlecompute = {
@@ -83,8 +83,8 @@ source "googlecompute" "nginx" {
   machine_type = "e2-standard-8"
   disk_size    = 20
 
-  image_name              = "nginx-${var.image_version}"
-  image_family            = "nginx"
+  image_name              = "dz-nginx-${var.image_version}"
+  image_family            = "dz-nginx"
   image_description       = "${var.source_image_family} + nginx ${var.nginx_version} (systemd) + mkdocs ${var.mkdocs_version}. No Java/Tomcat/MySQL. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "nginx"

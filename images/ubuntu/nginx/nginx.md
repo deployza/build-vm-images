@@ -1,6 +1,6 @@
 # `nginx` image
 
-GCE image family **`nginx`**: Ubuntu + basic tools + gcloud CLI + nginx
+GCE image family **`dz-nginx`**: Ubuntu + basic tools + gcloud CLI + nginx
 (systemd), serving static content. No Java, no Tomcat, no MySQL — the lean web
 front door for a VM that has no app server of its own (e.g. a marketing site
 or docs bundle unpacked to disk, not a Tomcat app).
@@ -177,9 +177,9 @@ gcloud builds submit \
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`)
 — GCE never overwrites an existing image. Bump `_IMAGE_VERSION` to publish a
-new one. (The `nginx` family pointer just moves to the newest image.)
+new one. (The `dz-nginx` family pointer just moves to the newest image.)
 
-Consumers launch with `--image-family=nginx --image-project=dz-builds`.
+Consumers launch with `--image-family=dz-nginx --image-project=dz-builds`.
 
 ## Changelog
 

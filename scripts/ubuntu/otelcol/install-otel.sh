@@ -32,8 +32,8 @@ OTELCOL_CONF_DIR=/etc/otelcol
 OTELCOL_TAR="otelcol-contrib_${OTELCOL_VERSION}_linux_amd64.tar.gz"
 OTELCOL_URL="https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTELCOL_VERSION}/${OTELCOL_TAR}"
 
-# NO CHECKSUM VERIFICATION, deliberately — matching install-java.sh,
-# install-tomcat.sh and install-gitea.sh, which all fetch a pinned tarball over
+# NO CHECKSUM VERIFICATION, deliberately — matching install-java.sh
+# and install-tomcat.sh, which both fetch a pinned tarball over
 # HTTPS and extract it. TLS to the release host is the trust boundary, and the
 # pinned version in versions.env is what makes the bake reproducible.
 # (install-python.sh is the one exception in this directory.)
