@@ -2,16 +2,16 @@
 # Install CPython under /opt/python/<version> and symlink /opt/python/latest,
 # mirroring install-java.sh's /opt/<tool>/latest layout.
 #
-# INVOKED AS ITS OWN PACKER PROVISIONER LINE BY EVERY FLAVOR, and kept LAST in
-# that list, immediately before write-manifest.sh. It used to be chained from
-# the end of install-basics.sh; it is called explicitly now so that a template
-# says what the flavor installs and so a failure here names this script rather
-# than "basics". Last, because it is by far the slowest step in a bake: every
-# cheap failure in every other installer surfaces before the compile rather than
-# 15 minutes after it. Python is baseline fleet-wide, not a per-flavor opt-in.
-# Nothing else in a bake depends on it -- install-mkdocs.sh and install-mcp.sh
-# build their venvs from the DISTRO python3 that install-basics.sh puts down --
-# so running it last is free.
+# INVOKED AS ITS OWN PACKER PROVISIONER LINE BY EVERY FLAVOR, and kept LAST
+# among the installers: only the logs/ scripts and write-manifest.sh follow
+# it. It used to be chained from the end of install-basics.sh; it is called
+# explicitly now so that a template says what the flavor installs and so a
+# failure here names this script rather than "basics". Last, because it is by
+# far the slowest step in a bake: every cheap failure in every other installer
+# surfaces before the compile rather than 15 minutes after it. Python is
+# baseline fleet-wide, not a per-flavor opt-in. Nothing else in a bake depends
+# on it -- install-mkdocs.sh and install-mcp.sh build their venvs from the
+# DISTRO python3 that install-basics.sh puts down -- so running it last is free.
 #
 # It is also why every template carries machine_type = "e2-standard-8" and
 # disk_size = 20, and every cloudbuild.yaml a timeout of 3600s -- the compile
@@ -19,7 +19,7 @@
 # those three will fail its first bake on the clock.
 #
 # BUILT FROM SOURCE, ON PURPOSE. The other installers prefer a package repo
-# (nginx.org, Ubuntu's own) or a published binary (JDK, Gitea) and this one
+# (nginx.org, Ubuntu's own) or a published binary (JDK, otelcol) and this one
 # cannot: Ubuntu 24.04 ships Python 3.12 and carries no 3.14 package at all,
 # and the usual backport (the deadsnakes PPA) publishes "latest 3.14.x" rather
 # than a named patch — an apt-based image would silently acquire a different

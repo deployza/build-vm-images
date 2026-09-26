@@ -76,7 +76,7 @@ source "googlecompute" "mcp" {
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
 
-  # BAKE VM SIZE AND DISK ARE SET BY install-basics.sh, WHICH COMPILES CPYTHON
+  # BAKE VM SIZE AND DISK ARE SET BY install-python.sh, WHICH COMPILES CPYTHON
   # (PGO+LTO) ON EVERY FLAVOR -- see that script's header. Bake time there is
   # almost entirely parallel `make`, so it tracks the bake VM's core count:
   # on googlecompute's e2-standard-2 default it runs well over half an hour,

@@ -20,9 +20,10 @@ not a shared source.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
-  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
-  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
+- `install-basics.sh`, `install-gcloud.sh`, `install-python.sh` — the baseline
+  every flavor gets: apt basics (distro `python3`/venv/pip included), the gcloud
+  CLI, and the pinned CPython at `/opt/python/latest`; see
+  [`../../../CLAUDE.md`](../../../CLAUDE.md)
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`
@@ -36,12 +37,10 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 
 This image bakes **the toolchain only** — a venv with `mkdocs` and its two
 plugins installed — not a `www-apidocs` checkout, not a build, and no
-`mkdocs.yml`. That is deliberate: see
-[`../../../docs/apidocs-vm-build-plan.md`](../../../docs/apidocs-vm-build-plan.md)
-for the full design (`website-vm` clones `www-apidocs` from GitHub and runs
-`mkdocs build --strict` itself, on a systemd timer owned by
-`build-ops`, instead of Cloud Build producing `site/` for the VM to
-pull from GCS).
+`mkdocs.yml`. That is deliberate: the VM clones `www-apidocs` from GitHub and
+runs `mkdocs build --strict` itself, through an on-demand `docs-refresh`
+service that `build-ops` installs (`vm/deployza-vm/www-apidocs.sh`), instead
+of Cloud Build producing `site/` for the VM to pull from GCS.
 
 Baked at `/opt/mkdocs/venv` — same self-contained-venv pattern as the `mcp`
 flavor's graphify install (`install-mcp.sh`), for the same reason: Ubuntu's
@@ -86,7 +85,7 @@ deployed should not pretend to serve one.
 
 ### The app.d / site.d contract
 
-The per-app deploy script (`build-ops/vm/<app>.sh`) writes
+The per-app deploy script (`build-ops/vm/<vm>/<app>.sh`) writes
 `/etc/nginx/app.d/<app>.conf` containing **only location blocks** (no
 `server{}` wrapper — they are included inside the baked server block), then
 runs `nginx -t && systemctl reload nginx`. The same contract is documented in
@@ -170,7 +169,7 @@ gcloud builds submit \
 > That reads like a bucket problem and is really an identity one — the
 > tarball uploaded fine under your own credentials; it is the *build* that
 > cannot read it back. `build-service-account` is the identity every trigger
-> in `build-terraform/builds/cloudbuild-triggers.tf` already uses, so passing
+> in `build-terraform/dz-builds/cloudbuild-triggers.tf` already uses, so passing
 > it here just makes a hand-run bake match an automated one. See this repo's
 > `CLAUDE.md` Conventions section for the full correction.
 
@@ -186,4 +185,4 @@ Consumers launch with `--image-family=dz-nginx --image-project=dz-builds`.
 | Version | Date       | Change                        |
 | ------- | ---------- | ------------------------------ |
 | 1-0     | 2026-09-07 | Initial `nginx` image — basics + nginx serving static content, no Java/Tomcat/MySQL. Built for `www.deployza.com` (marketing site + `/docs/`). |
-| 1-1     | 2026-09-09 | Bake the MkDocs toolchain (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`) so `website-vm` can build `www-apidocs`' site itself at deploy time instead of pulling a pre-built `site/` from GCS. See `docs/apidocs-vm-build-plan.md`. |
+| 1-1     | 2026-09-09 | Bake the MkDocs toolchain (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`) so `website-vm` can build `www-apidocs`' site itself at deploy time instead of pulling a pre-built `site/` from GCS. |

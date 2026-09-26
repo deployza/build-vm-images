@@ -28,7 +28,7 @@
        unbounded, and on the nginx-fronted flavors nginx already records the
        same information one hop earlier with the true client IP. This matches
        the fleet-wide access-log-off decision in the docker images.
-       See ../../CLAUDE.md -> "Log & disk hygiene (VM-only)".
+       See ../../../CLAUDE.md -> "Log & disk hygiene (VM-only)".
 
     2. A RemoteIpValve is ADDED, COMMENTED OUT by default.
        nginx-tomcat.sh uncomments it — and ONLY that script does, run as its
@@ -185,7 +185,7 @@
              $CATALINA_HOME/logs with no cap. On nginx-fronted flavors nginx
              logs the same requests with the true client IP; on the others the
              access log is simply not wanted. Do not reinstate it here — see
-             ../../CLAUDE.md -> "Log & disk hygiene (VM-only)". -->
+             ../../../CLAUDE.md -> "Log & disk hygiene (VM-only)". -->
 
         <!-- DEPLOYZA (2): RemoteIpValve, DISABLED by default.
              nginx-tomcat.sh uncomments this block (and only that script

@@ -18,7 +18,7 @@ export JAVA_HOME=/opt/java/latest
 # <Parameter> entries such as assess-server.config / assess-server.logs.dir and
 # promotes them to system properties). A JVM-wide -Dconfig.dir/-Dlogs.dir would
 # be shared by every co-hosted webapp, so the app deploy script installs those
-# context files per app instead. See <app>.sh in build-vm-scripts/vm.
+# context files per app instead. See <app>.sh in build-ops vm/<vm>/.
 
 # Calculate 75% of available RAM for Java heap
 # Get total RAM in KB, calculate 75%, convert to MB

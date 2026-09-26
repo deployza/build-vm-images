@@ -13,7 +13,7 @@ CLI, plus:
 
 Each service runs as a `systemd` unit. There is no Java, no Tomcat, and no nginx.
 
-The flavor is named for its purpose, like `git` and `mcp`, rather than by joining
+The flavor is named for its purpose, like `mcp`, rather than by joining
 its tool names.
 
 ## What a booted VM looks like

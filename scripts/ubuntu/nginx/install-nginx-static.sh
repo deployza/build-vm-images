@@ -5,7 +5,7 @@
 # /etc/nginx/app.d/ drop-in dir, and the /nginx-health endpoint. It bakes NO
 # routing — which paths are static and which serve what content is an
 # application decision, supplied at deploy time by
-# build-ops/vm/<app>.sh, exactly as MySQL is baked without
+# build-ops/vm/<vm>/<app>.sh, exactly as MySQL is baked without
 # credentials.
 #
 # This is install-nginx.sh's Tomcat-free sibling, not a reuse of it:
@@ -67,7 +67,7 @@ rm -f /etc/nginx/conf.d/default.conf
 #   * the :80 server block and the /nginx-health endpoint
 #   * an EMPTY /etc/nginx/app.d/ that the server block includes
 #
-# The per-app deploy script (build-ops/vm/<app>.sh) drops its own
+# The per-app deploy script (build-ops/vm/<vm>/<app>.sh) drops its own
 # location blocks into /etc/nginx/app.d/<app>.conf and reloads nginx (or, for a
 # per-HOST app that wants the whole server block to itself, writes into
 # /etc/nginx/site.d/ instead — that directory is created by the deploy script,

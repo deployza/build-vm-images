@@ -5,13 +5,14 @@
 # WHAT THIS BAKES IS ONLY THE MECHANISM. The collector installed here watches
 # nothing and sends nowhere: /etc/otelcol/config.yaml is an inert nop pipeline
 # (otelcol-base.yaml). Real configuration is PUSHED to a running VM over SSH by
-# build-ops/otel/apply.sh, which swaps that file and restarts the
-# service. Nothing on the VM pulls, clones or polls for config.
+# build-ops' vm/<vm>/install-otel.sh (run by Ansible), which validates it, swaps
+# that file and restarts the service. Nothing on the VM pulls, clones or polls
+# for config.
 #
-# See ../../../build-docs/ops-execution.md for the full design and the reasoning
-# behind the push-only split. The short version: a log path or a parser regex is
-# iterated on weekly and a collector binary is replaced quarterly, so config
-# does not belong in an image.
+# See ../../../../build-docs/ops-execution.md for the full design and the
+# reasoning behind the push-only split. The short version: a log path or a
+# parser regex is iterated on weekly and a collector binary is replaced
+# quarterly, so config does not belong in an image.
 #
 # WHY THE TARBALL AND NOT THE .deb. The official otelcol-contrib .deb creates
 # its own `otelcol-contrib` user, its own unit, and reads
@@ -19,8 +20,9 @@
 # the paths and the unit ours, and matches how the JDK and Tomcat are installed
 # on these images (tarball into a fixed dir, no version string in any path).
 #
-# WHY CONTRIB AND NOT CORE. The filelog receiver and the elasticsearch and
-# clickhouse exporters are all contrib-only. Core cannot do this job.
+# WHY CONTRIB AND NOT CORE. The filelog and journald receivers and the
+# googlecloudpubsub exporter the pushed configs use are all contrib-only. Core
+# cannot do this job.
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,9 +47,10 @@ echo "== Create the otelcol service user =="
 #
 # GROUP MEMBERSHIP IS DELIBERATELY NOT SET HERE. Which groups this user needs
 # (adm for nginx/mysql, tomcat for Tomcat) depends on what the VM ends up
-# running, which is a push-time decision, not a bake-time one. apply.sh adds
-# them with `getent group X && usermod -aG X otelcol` and restarts the service —
-# supplementary groups only take effect at process start.
+# running, which is a push-time decision, not a bake-time one. build-ops'
+# install-otel.sh adds them (OTEL_GROUPS) with `getent group X && usermod -aG X
+# otelcol` and restarts the service — supplementary groups only take effect at
+# process start.
 #
 # THIS IS THE NUMBER ONE SILENT FAILURE in a collector deployment: without the
 # right group the receiver gets EACCES on a log directory, logs it exactly once,
@@ -76,10 +79,8 @@ chmod 755 "$OTELCOL_HOME/bin/otelcol-contrib"
 
 
 echo "== Install the inert base config =="
-# THERE IS NO conf.d DIRECTORY. An earlier design merged per-component fragments
-# on the target; that was dropped in favour of one complete config per image
-# flavor, rendered nowhere and pushed whole. See ops-execution.md, "One finished
-# config per flavor, not fragments".
+# THERE IS NO conf.d DIRECTORY. Nothing merges on the target: build-ops keeps
+# one complete config per VM (vm/<vm>/otel.yaml) and pushes it whole.
 #
 # otelcol-base.yaml is shipped as a FILE rather than written by a heredoc here,
 # for the same reason server.xml is (see install-tomcat.sh): a config that is
@@ -89,18 +90,18 @@ mkdir -p "$OTELCOL_CONF_DIR"
 install -o root -g otelcol -m 640 \
         "$SCRIPT_DIR/otelcol-base.yaml" "$OTELCOL_CONF_DIR/config.yaml"
 
-# Backup slot used by apply.sh: it copies the live config here before swapping,
-# and restores from it if the restarted collector fails its health check.
+# Backup slot used by build-ops' install-otel.sh: it copies the live config here
+# before swapping, and restores from it if the restarted collector does not stay
+# up.
 # Created empty at bake so the directory permissions are set once, here.
 mkdir -p "$OTELCOL_CONF_DIR/backup"
 chown root:otelcol "$OTELCOL_CONF_DIR/backup"
 chmod 750 "$OTELCOL_CONF_DIR/backup"
 
-# Validate what we just installed. This is the ONE place a local validate earns
-# its keep — it is checking a file this script controls, at bake time, where a
-# failure costs a rebuild instead of a silent dead collector on every VM.
-# apply.sh does NOT validate (CI does that for the pushed configs); it does a
-# post-restart health check instead, which catches strictly more.
+# Validate what we just installed, at bake time, where a failure costs a
+# rebuild instead of a silent dead collector on every VM. The push side
+# validates each pushed config the same way, against this same binary, before
+# it swaps it in.
 "$OTELCOL_HOME/bin/otelcol-contrib" validate --config "$OTELCOL_CONF_DIR/config.yaml"
 
 

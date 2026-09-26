@@ -2,7 +2,7 @@
 # + Grafana with the ClickHouse datasource plugin.
 # Family: dz-ops.
 #
-# No Java, no Tomcat, no nginx. Named for its purpose, like git and mcp, rather
+# No Java, no Tomcat, no nginx. Named for its purpose, like mcp, rather
 # than by joining its four tool names, which made the name too long. See ops.md.
 packer {
   required_plugins {

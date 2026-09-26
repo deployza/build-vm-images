@@ -24,7 +24,7 @@ Environment=PROCESS_NAME=tomcat
 # Config/log locations are resolved per webapp from its context.xml
 # ($CATALINA_HOME/conf/Catalina/localhost/<app>.xml), not from JVM-wide env vars
 # or -D properties — so there is deliberately no CONFIG_DIR/LOGS_DIR here. See
-# setenv.sh and the app deploy script (<app>.sh in build-vm-scripts/vm).
+# setenv.sh and the app deploy script (<app>.sh in build-ops vm/<vm>/).
 
 # CATALINA_HOME / CATALINA_BASE are intentionally not set: ExecStart invokes
 # catalina.sh by absolute path, so it derives CATALINA_HOME from its own bin/

@@ -19,7 +19,7 @@
 # asset (see versions.env). Semaphore has no apt repo. The deb installs a
 # single static binary at /usr/bin/semaphore and depends on git, which
 # install-basics.sh already put down. It installs no unit and no user, which is
-# why both are here. No checksum step, matching the Gitea / otelcol /
+# why both are here. No checksum step, matching the otelcol /
 # cloud-sql-proxy installs.
 #
 # ANSIBLE IS NOT INSTALLED HERE. install-ansible.sh is its own provisioner line

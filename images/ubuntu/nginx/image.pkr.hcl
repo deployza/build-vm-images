@@ -57,8 +57,8 @@ variable "nginx_version" {
   default = null
 }
 
-# MkDocs toolchain, baked so website-vm can `mkdocs build` a www-apidocs
-# checkout itself at deploy time (docs/apidocs-vm-build-plan.md). Same
+# MkDocs toolchain, baked so a VM can `mkdocs build` a www-apidocs checkout
+# itself at deploy time (build-ops vm/deployza-vm/www-apidocs.sh). Same
 # versions.env-sourced -var pattern as nginx_version above.
 variable "mkdocs_version" {
   type    = string
@@ -72,7 +72,7 @@ source "googlecompute" "nginx" {
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
 
-  # BAKE VM SIZE AND DISK ARE SET BY install-basics.sh, WHICH COMPILES CPYTHON
+  # BAKE VM SIZE AND DISK ARE SET BY install-python.sh, WHICH COMPILES CPYTHON
   # (PGO+LTO) ON EVERY FLAVOR -- see that script's header. Bake time there is
   # almost entirely parallel `make`, so it tracks the bake VM's core count:
   # on googlecompute's e2-standard-2 default it runs well over half an hour,

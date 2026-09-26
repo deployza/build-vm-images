@@ -13,7 +13,7 @@
 # That is fine — both pins need Python >= 3.12, which is what Ubuntu 24.04 ships.
 #
 # ON PATH, UNLIKE mkdocs/graphify. Those venvs are invoked by absolute path from
-# units this repo owns. Ansible is invoked by Semaphore, which runs
+# the units build-ops pushes. Ansible is invoked by Semaphore, which runs
 # `ansible-playbook` / `ansible-galaxy` by name, and by a human at a shell. So
 # the entry points are symlinked into /usr/local/bin. A symlinked venv script
 # still runs on the venv's interpreter (its shebang is absolute), so this does

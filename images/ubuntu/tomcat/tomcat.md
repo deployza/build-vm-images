@@ -8,9 +8,10 @@ time and pulled onto the VM at boot (see `build-system.md` and `ops-deployment.m
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
-  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
-  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
+- `install-basics.sh`, `install-gcloud.sh`, `install-python.sh` — the baseline
+  every flavor gets: apt basics (distro `python3`/venv/pip included), the gcloud
+  CLI, and the pinned CPython at `/opt/python/latest`; see
+  [`../../../CLAUDE.md`](../../../CLAUDE.md)
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — `tomcat` user (home `/home/tomcat`), Tomcat at
   `/home/tomcat/instance`, `tomcat` systemd service
@@ -52,10 +53,11 @@ files (installed alongside it in the same dir), which the app's
 App logs are written under **`/home/tomcat/instance/logs/<app>/`** (per the app's
 logback config) and rotated by `/etc/logrotate.d/tomcat-apps`.
 
-Tomcat's per-request **access log is disabled**: `install-tomcat.sh` comments the
-`AccessLogValve` out of `conf/server.xml`, so no `localhost_access_log.*.txt`
-files are written under `/home/tomcat/instance/logs` (matching the
-nginx/apisix/tomcat docker images, which also turn the access log off). This
+Tomcat's per-request **access log is disabled**: the repo-owned `conf/server.xml`
+that `install-tomcat.sh` installs omits upstream's `AccessLogValve`, so no
+`localhost_access_log.*.txt` files are written under `/home/tomcat/instance/logs`
+(matching the nginx/apisix/tomcat docker images, which also turn the access log
+off). This
 applies to the `tomcat-mysql` flavor too, since it runs the same installer.
 
 ## Build
@@ -63,8 +65,16 @@ applies to the `tomcat-mysql` flavor too, since it runs the same installer.
 Run from the **repo root** (the build context must include `scripts/`):
 
 ```bash
-gcloud builds submit --config images/ubuntu/tomcat/cloudbuild.yaml .
+gcloud builds submit \
+  --config images/ubuntu/tomcat/cloudbuild.yaml \
+  --service-account=projects/dz-builds/serviceAccounts/build-service-account@dz-builds.iam.gserviceaccount.com \
+  --project=dz-builds \
+  .
 ```
+
+`--service-account` is required: without it the build runs as the Compute
+Engine default SA and fails with a 403 on the source tarball. See this repo's
+`CLAUDE.md` Conventions section.
 
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —

@@ -11,16 +11,17 @@ Guidance for Claude Code when working in this repository.
 > **If that path does not exist, you have not cloned `build-docs` yet — stop and
 > clone it first** (it sits next to this repo under `Build/`):
 > ```bash
-> git clone https://bitbucket.org/deployza/build-docs.git
+> git clone https://github.com/deployza/build-docs.git
 > ```
 > Without it you are missing the cross-repo context.
 
 ## What this repo is
 
-**VM disk-image pipelines.** Packer templates (`*.pkr.hcl`) +
-`*-cloudbuild.yaml` that bake bootable **GCE images** (Ubuntu + JDK + Maven +
-Tomcat-as-systemd) and store them as image families (e.g. `tomcat`). This is the
-VM-image equivalent of the `docker/` repo (which builds container images).
+**VM disk-image pipelines.** Packer templates (`image.pkr.hcl`) +
+`cloudbuild.yaml` that bake bootable **GCE images** (Ubuntu + the runtime a
+flavor needs, e.g. JDK + Tomcat-as-systemd) into project `dz-builds` and store
+them as image families (e.g. `dz-tomcat`). This is the VM-image equivalent of
+the `docker/` repo (which builds container images).
 
 Packer **provisions the image by running the installers in
 [`scripts/<os>/`](scripts/)**, which live in this repo.
@@ -88,9 +89,6 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > static web front door) and `ops` (Ansible + Semaphore UI + ClickHouse +
 > Grafana) — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
 > image family is the flavor name with a `dz-` prefix (`dz-tomcat`).
-> The `java`, `git` (Gitea) and `nginx-python` flavors were removed on
-> 2026-09-25: nothing launched them, and with pinned CPython on every flavor
-> `nginx-python` no longer differed usefully from `nginx`.
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
 > `scripts/ubuntu/`. The GCP `project`/`zone` variables are declared (with
@@ -117,7 +115,9 @@ These are self-contained — there is no build-time dependency on a sibling repo
 
   It reads like a bucket problem and is an identity one — your own credentials
   uploaded the tarball fine; the *build* cannot read it back. Pass the same SA the
-  triggers use (`build-terraform/builds/cloudbuild-triggers.tf`):
+  triggers use (`build-terraform/dz-builds/cloudbuild-triggers.tf`; triggers
+  exist for `tomcat-mysql` and `mcp` only, so every other flavor is baked by
+  hand):
 
   ```bash
   gcloud builds submit \
@@ -129,8 +129,6 @@ These are self-contained — there is no build-time dependency on a sibling repo
 
   Verified 2026-08-25 on the `mcp` flavor: bare command fails as above, this
   one succeeds. Triggers are unaffected — they already set `service_account`.
-  Only `mcp/mcp.md` shows the corrected form; the other six still show the bare
-  one. Treat this section as the correction until they are updated.
 - One `image.pkr.hcl` + `cloudbuild.yaml` per image folder (the folder name is
   the flavor, so the filenames stay unprefixed).
 - Use `image_family` so consumers track the latest non-deprecated image.
@@ -271,6 +269,7 @@ build-vm-images/
       install-java.sh
       install-mysql.sh
       install-mkdocs.sh
+      install-mcp.sh          # graphify + fastmcp venv ONLY (mcp); the app is build-ops'
       install-ansible.sh      # ansible + ansible-core venv, on PATH (ops)
       install-grafana.sh      # Grafana OSS + ClickHouse plugin, NOT enabled
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
@@ -286,7 +285,7 @@ build-vm-images/
         tomcat.service
       nginx/
         install-nginx.sh
-        install-nginx-static.sh  # nginx with no Tomcat upstream (static / Python flavors)
+        install-nginx-static.sh  # nginx with no Tomcat upstream (nginx flavor)
       otelcol/
         install-otel.sh       # OpenTelemetry Collector, INERT (every flavor)
         otelcol.service       # collector unit (not a template, unlike tomcat.service)
@@ -306,8 +305,6 @@ build-vm-images/
       logs/
         logs-system.sh        # host-wide journald + logrotate policy (every flavor)
         logs-disk-tools.sh    # disk-audit / disk-alert helpers (every flavor)
-      install-mcp.sh          # graphify + fastmcp venv ONLY (mcp); the app is build-ops'
-        ...
   images/
     ubuntu/
       tomcat/
@@ -326,6 +323,9 @@ build-vm-images/
         image.pkr.hcl
         cloudbuild.yaml
         tomcat-mysql-nginx.md
+      mcp/                    # same three files per flavor
+      nginx/
+      ops/
 ```
 
 A second base OS (e.g. `centos`) is added as sibling `scripts/centos/` +
@@ -358,22 +358,23 @@ Collector (contrib) plus `otelcol.service`, with `otelcol-base.yaml` baked as
 `/etc/otelcol/config.yaml`. That base config is a `nop` pipeline: the service is
 running and healthy but **reads nothing and exports nowhere**.
 
-Real configuration is **pushed** to a running VM over SSH from
-`build-ops/otel/`, which swaps `config.yaml` and restarts the service.
-Nothing on the VM clones, pulls or polls for it, and no collector config belongs
-in this repo beyond the inert base.
+Real configuration is **pushed** to a running VM over SSH by
+`build-ops/vm/<vm>/install-otel.sh` (run by Ansible), which validates the VM's
+`otel.yaml`, swaps it in as `config.yaml` and restarts the service. Nothing on
+the VM clones, pulls or polls for it, and no collector config belongs in this
+repo beyond the inert base.
 
 Two things to know before touching it:
 
-- **`versions.env` here is the only `OTELCOL_VERSION` pin.**
-  `build-ops/otel/cloudbuild.yaml` held a second copy until it was
-  deleted on 2026-09-24 (that repo is not connected to Cloud Build, so nothing
-  ever triggered the job). There is now no CI on the otel configs at all —
-  `push.sh --dry-run` validates against whatever `otelcol-contrib` the pusher
-  has, so that binary should match this pin.
+- **`versions.env` here is the only `OTELCOL_VERSION` pin.** There is no CI on
+  the otel configs: the push validates each one on the VM against
+  `/opt/otelcol/bin/otelcol-contrib`, the binary this pin installs. Run on a
+  workstation, build-ops' `install-otel.sh --check` uses whatever
+  `otelcol-contrib` is on PATH, so that binary should match this pin.
 - **The `otelcol` user is created with no supplementary groups.** Which groups
   it needs (`adm`, `tomcat`) depends on what the VM runs, which is a push-time
-  decision. Do not add them here.
+  decision (`OTEL_GROUPS` in build-ops' `install-otel.sh`). Do not add them
+  here.
 
 Full design and reasoning: `../build-docs/ops-execution.md`.
 
@@ -492,11 +493,15 @@ apart from public ones in a GCE image listing; the version lives in the
 `image_name` (`dz-tomcat-1-1`) and in image **labels** — never in the family — so
 consumers track `--image-family=dz-tomcat` without ever chasing minor-version
 bumps. The `flavor` label and `IMAGE_FLAVOR` stay the bare flavor name.
+`dz-builds` also holds older copies in unprefixed families (`mcp`, `nginx`,
+`tomcat-mysql`, `tomcat-nginx-mysql`); those are managed in
+`build-terraform/dz-builds/images.tf`, are not what these recipes build, and
+are not updated by a bake.
 
 Each image runs `install-basics.sh` then `install-gcloud.sh` first, then the
 additional installer scripts required by that flavor, then `install-otel.sh` +
-`install-cloud-sql-proxy.sh`, and finishes with `install-python.sh` +
-`write-manifest.sh`.
+`install-cloud-sql-proxy.sh`, and finishes with `install-python.sh`, the two
+`logs/` scripts and `write-manifest.sh`.
 
 > **Every installer gets its own provisioner line — no installer calls
 > another.** `install-basics.sh` used to end by invoking `install-python.sh`,
@@ -511,7 +516,8 @@ additional installer scripts required by that flavor, then `install-otel.sh` +
 > missing binary on a booted VM. `nginx-tomcat.sh` already worked this way for
 > the same reason; keep it that way for anything added next.
 >
-> **`install-python.sh` is kept LAST, immediately before `write-manifest.sh`.**
+> **`install-python.sh` is kept LAST among the installers** — only the `logs/`
+> scripts and `write-manifest.sh` follow it.
 > It is by far the slowest step, so every cheap failure in every other
 > installer surfaces before the compile rather than 15 minutes after it.
 > Nothing in a bake depends on its output — `install-mkdocs.sh` and
@@ -537,7 +543,7 @@ additional installer scripts required by that flavor, then `install-otel.sh` +
 > build needs `machine_type = "e2-standard-8"` and `disk_size = 20` in the
 > template, and `timeout: 3600s` in `cloudbuild.yaml` — Cloud Build's
 > 10-minute default cannot fit it, and a timeout strands the temp Packer VM.
-> All ten flavors carry all three. **Copy them into any new flavor** or its
+> All seven flavors carry all three. **Copy them into any new flavor** or its
 > first bake fails on the clock, in a way that looks nothing like a Python
 > problem.
 >

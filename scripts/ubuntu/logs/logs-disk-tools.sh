@@ -14,9 +14,7 @@ set -euo pipefail
 #
 # disk-alert LOGS ONLY - it does not mail or page. It writes to syslog under the
 # tag "disk-alert" and nothing watches that tag today, so treat it as a
-# breadcrumb during an investigation, not as monitoring. (A previous
-# ADMIN_EMAIL knob was removed: it was assigned and never read, which made the
-# script look like it would mail you.)
+# breadcrumb during an investigation, not as monitoring.
 
 DISK_ALERT_THRESHOLD="${DISK_ALERT_THRESHOLD:-85}"
 

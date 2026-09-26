@@ -1,13 +1,14 @@
 #!/bin/bash
 # Install MkDocs + its plugins into a venv, for the nginx flavor's
-# docs-on-the-box design (docs/apidocs-vm-build-plan.md in this repo).
+# docs-on-the-box design.
 #
-# website-vm clones www-apidocs from GitHub at deploy time and runs
-# `mkdocs build --strict` locally (build-ops's docs-refresh timer) —
-# this script bakes the ONLY part of that which belongs at image-build time:
-# the Python toolchain mkdocs needs. It does not clone www-apidocs, does not
-# run a build, and bakes no repo-specific config; that is all deploy-time
-# work, owned by build-ops, same split the WAR/conf.d pull follows.
+# The VM clones www-apidocs from GitHub at deploy time and runs
+# `mkdocs build --strict` locally (the on-demand docs-refresh service installed
+# by build-ops' vm/deployza-vm/www-apidocs.sh) — this script bakes the ONLY
+# part of that which belongs at image-build time: the Python toolchain mkdocs
+# needs. It does not clone www-apidocs, does not run a build, and bakes no
+# repo-specific config; that is all deploy-time work, owned by build-ops, same
+# split the WAR/conf.d pull follows.
 #
 # BAKE-TIME, NOT DEPLOY-TIME. Chosen the same way install-mcp.sh bakes
 # graphify's venv rather than installing it from a boot script: PyPI

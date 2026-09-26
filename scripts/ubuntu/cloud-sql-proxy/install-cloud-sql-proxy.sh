@@ -18,7 +18,7 @@
 # WHY THE GCS MIRROR AND NOT apt. Google publishes the proxy as a single static
 # binary at storage.googleapis.com/cloud-sql-connectors/; there is no apt repo
 # for it. A pinned URL into a fixed path keeps this the same shape as the JDK,
-# Tomcat, Gitea and otelcol installs.
+# Tomcat and otelcol installs.
 #
 # WHY NOT THE JDBC SOCKET FACTORY INSTEAD. The Java connector library would
 # cover Tomcat apps only. The proxy is a process, so it serves the Python

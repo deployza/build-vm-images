@@ -67,9 +67,9 @@ files being pushed and this image's venv:
 - **Vendored-extractor drift check** — see *Markdown* below.
 
 So a `GRAPHIFY_VERSION` or `FASTMCP_VERSION` bump that breaks either now fails
-the **first push** to a VM on the new image, while the old install keeps
-serving — not the bake. Before replacing the live VM with a bumped image, push
-to a scratch VM booted from it, or run the pre-flight by hand on one.
+the **first push** to a VM on the new image — not the bake. Before putting a
+bumped image into service, push to a scratch VM booted from it, or run the
+pre-flight by hand on one.
 
 > **`v8` is the only reliable reference.** The published graphify documentation
 > and the repo's `main` branch both disagree with the shipping code. Behavioural
@@ -140,7 +140,7 @@ gcloud builds submit \
 > That reads like a bucket problem and is really an identity one — the tarball
 > uploaded fine under your own credentials; it is the *build* that cannot read it
 > back. `build-service-account` is the identity every trigger in
-> `build-terraform/builds/cloudbuild-triggers.tf` already uses, so passing it here
+> `build-terraform/dz-builds/cloudbuild-triggers.tf` already uses, so passing it here
 > just makes a hand-run bake match an automated one. Verified 2026-08-25: the bare
 > command fails as above, the command above succeeds.
 >
@@ -167,5 +167,5 @@ Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 | Version | Date       | Change                              |
 | ------- | ---------- | ----------------------------------- |
 | 1-0     | 2026-08-31 | Initial `mcp` image. Renamed wholesale from the former `graphify` family — flavor, units, helpers, service user, venv and env file all now say `mcp`; only upstream's own names (`graphifyy`, `graphify.serve`, `GRAPHIFY_API_KEY`, `.graphify`) are unchanged. `/data` moves onto the boot disk, so no `attached_disk` is required; `mcp-boot` still mounts one if present. Carries forward everything the `graphify` family had learned — the gcloud `CLOUDSDK_CONFIG` fix, per-repo failure tolerance in the refresh, and the tokenless Markdown pass with its vendored extractor and bake-time drift check. |
-| 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT is now shared with `website-vm`'s docs-refresh; see `../../docs/apidocs-vm-build-plan.md`). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
+| 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT was then shared with `website-vm`'s docs-refresh). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
 | 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |

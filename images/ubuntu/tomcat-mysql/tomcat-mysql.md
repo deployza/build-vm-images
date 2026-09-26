@@ -11,9 +11,10 @@ deploy step provisions credentials and databases.
 
 ## Contents
 
-- `install-basics.sh` — apt basics + gcloud CLI + Python (distro `python3`/venv/pip, and the pinned
-  CPython from `install-python.sh` at `/opt/python/latest` — every flavor
-  gets it; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
+- `install-basics.sh`, `install-gcloud.sh`, `install-python.sh` — the baseline
+  every flavor gets: apt basics (distro `python3`/venv/pip included), the gcloud
+  CLI, and the pinned CPython at `/opt/python/latest`; see
+  [`../../../CLAUDE.md`](../../../CLAUDE.md)
 - `install-java.sh` — JDK under `/opt/java`
 - `install-tomcat.sh` — `tomcat` user (home `/home/tomcat`), Tomcat at
   `/home/tomcat/instance`, `tomcat` systemd service
@@ -27,8 +28,16 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 Run from the **repo root** (the build context must include `scripts/`):
 
 ```bash
-gcloud builds submit --config images/ubuntu/tomcat-mysql/cloudbuild.yaml .
+gcloud builds submit \
+  --config images/ubuntu/tomcat-mysql/cloudbuild.yaml \
+  --service-account=projects/dz-builds/serviceAccounts/build-service-account@dz-builds.iam.gserviceaccount.com \
+  --project=dz-builds \
+  .
 ```
+
+`--service-account` is required: without it the build runs as the Compute
+Engine default SA and fails with a 403 on the source tarball. See this repo's
+`CLAUDE.md` Conventions section.
 
 Image names are unique per project, so re-running with an unchanged
 `_IMAGE_VERSION` **fails** at the image-create step (GCE `409 alreadyExists`) —

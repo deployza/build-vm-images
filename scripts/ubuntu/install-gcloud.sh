@@ -10,9 +10,9 @@
 # and its own provisioner line.
 #
 # WHAT DEPENDS ON IT. The pushed app-deploy scripts use `gcloud`/`gsutil` to
-# pull the app's WAR and conf from GCS, the mcp flavor's gcp-secret helper reads
-# Secret Manager through it, and it is the first thing anyone SSHing into a VM
-# reaches for. It is baseline, not per-flavor.
+# pull the app's WAR and conf from GCS, the MCP server's gcp-secret helper
+# (pushed by build-ops) reads Secret Manager through it, and it is the first
+# thing anyone SSHing into a VM reaches for. It is baseline, not per-flavor.
 #
 # IT RUNS ON THE DISTRO INTERPRETER. The gcloud CLI ships its own bundled
 # Python but falls back to /usr/bin/python3, which is why install-python.sh
