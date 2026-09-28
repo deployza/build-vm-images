@@ -9,7 +9,7 @@ options:
 timeout: 3600s
 
 substitutions:
-  _IMAGE_VERSION: '1-1'
+  _IMAGE_VERSION: '1-2'
 
 steps:
   - name: 'hashicorp/packer'
@@ -35,5 +35,6 @@ steps:
             -var=semaphore_version=$$SEMAPHORE_VERSION \
             -var=clickhouse_version=$$CLICKHOUSE_VERSION \
             -var=grafana_version=$$GRAFANA_VERSION \
+            -var=nginx_version=$$NGINX_VERSION \
             images/ubuntu/ops/image.pkr.hcl
         done

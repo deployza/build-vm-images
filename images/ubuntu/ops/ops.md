@@ -10,8 +10,11 @@ CLI, plus:
 - **[Grafana](https://grafana.com) OSS**: with the
   [ClickHouse datasource plugin](https://grafana.com/grafana/plugins/grafana-clickhouse-datasource/)
   pre-installed.
+- **[nginx](https://nginx.org)**: stable, from the nginx.org apt repo, on `:80`
+  with no routing baked (the Tomcat-free `install-nginx-static.sh`, as on the
+  `nginx` flavor).
 
-Each service runs as a `systemd` unit. There is no Java, no Tomcat, and no nginx.
+Each service runs as a `systemd` unit. There is no Java and no Tomcat.
 
 The flavor is named for its purpose, like `mcp`, rather than by joining
 its tool names.
@@ -23,6 +26,7 @@ its tool names.
 | ClickHouse | `clickhouse-server` | `127.0.0.1:9000` native, `:8123` HTTP | **enabled**, loopback only, empty data dir |
 | Grafana | `grafana-server` | `:3000` | installed, **not enabled** |
 | Semaphore | `semaphore` | `:3001` | installed, **not enabled**, no config |
+| nginx | `nginx` | `:80` | **enabled**, empty `/etc/nginx/app.d/`: 404 on every path except `/nginx-health` |
 | Ansible | (CLI) | n/a | `/opt/ansible/venv`, commands in `/usr/local/bin` |
 
 **Why only ClickHouse is enabled:** whether a service is enabled depends on
@@ -31,6 +35,8 @@ whether its baked state is safe to boot into.
 - **ClickHouse** runs fine with no configuration. The repo's `config.d` and
   `users.d` files keep it, and its password-less `default` user, on loopback.
   So it is enabled, like MySQL on the `mysql` flavor.
+- **nginx** serves nothing until a deploy step drops a config into
+  `/etc/nginx/app.d/`, so it is enabled too, like on the `nginx` flavor.
 - **Grafana** would boot into `admin/admin` on every interface.
 - **Semaphore** exits at once without its config. That config holds three
   secrets, and `access_key_encryption` encrypts every SSH key stored in it.
@@ -52,6 +58,7 @@ unit, not the deploy.
 | `semaphore/install-semaphore.sh` | The `semaphore_community` deb from GitHub, a `semaphore` user with a real home (Ansible writes `~/.ansible` and `~/.ssh`), `/var/lib/semaphore`, the unit, and `/etc/semaphore/config.json.example`. |
 | `clickhouse/install-clickhouse.sh` | Pinned `clickhouse-{common-static,server,client}` from packages.clickhouse.com (`lts`), held. Installs `config.d/deployza.xml` and `users.d/deployza.xml`. **Starts the server once** to prove the config loads, checks the running version equals the pin, then wipes `/var/lib/clickhouse` so no two VMs share a server UUID. |
 | `install-grafana.sh` | Pinned `grafana` from apt.grafana.com, held, and the pinned ClickHouse plugin. Asserts no `grafana.db` was baked. |
+| `nginx/install-nginx-static.sh` | nginx stable from nginx.org, the `:80` default server with `/nginx-health`, an empty `/etc/nginx/app.d/` (contract in its `README`), and 14-day logrotate. No Tomcat upstream. |
 
 `clickhouse-config.xml` changes only what differs from the package's own config:
 
@@ -105,9 +112,13 @@ steps at the end of its bake log.
      secret with `head -c32 /dev/urandom | base64`.
    - Run `sudo -u semaphore semaphore user add --admin ... --config /etc/semaphore/config.json`.
    - Run `systemctl enable --now semaphore`.
-4. **Network:** open `:3000` and `:3001` only to the audience that needs them,
+4. **nginx (optional):** to front Grafana or Semaphore, drop location blocks
+   (or a `site.d/` server block) proxying to `127.0.0.1:3000` / `:3001`, then
+   run `nginx -t && systemctl reload nginx`. nginx does not terminate TLS
+   either unless the deploy adds a certificate.
+5. **Network:** open `:3000` and `:3001` only to the audience that needs them,
    for example IAP or an internal range. Neither service terminates TLS.
-5. **otel:** to ship ClickHouse's own logs, the `otelcol` user needs the
+6. **otel:** to ship ClickHouse's own logs, the `otelcol` user needs the
    `clickhouse` group. Add it to `OTEL_GROUPS` in the host's
    `build-ops/vm/<vm>/install-otel.sh`. It is a push-time decision, not an
    image one.
@@ -117,3 +128,4 @@ steps at the end of its bake log.
 | Version | Date       | Change |
 | ------- | ---------- | ------ |
 | 1-0     | 2026-09-25 | Initial image. Ansible 14.4.0 (core 2.21.4), Semaphore 2.19.12, ClickHouse 26.8.10.6, Grafana 13.2.2, ClickHouse plugin 4.21.3. |
+| 1-2     | 2026-09-28 | Adds nginx stable (`install-nginx-static.sh`), enabled on `:80` with no routing baked. |

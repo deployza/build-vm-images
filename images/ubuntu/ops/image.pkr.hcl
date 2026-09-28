@@ -1,8 +1,8 @@
 # ops flavor: basics + Ansible + Semaphore UI (web UI for Ansible) + ClickHouse
-# + Grafana with the ClickHouse datasource plugin.
+# + Grafana with the ClickHouse datasource plugin + nginx (Tomcat-free).
 # Family: dz-ops.
 #
-# No Java, no Tomcat, no nginx. Named for its purpose, like mcp, rather
+# No Java, no Tomcat. Named for its purpose, like mcp, rather
 # than by joining its four tool names, which made the name too long. See ops.md.
 packer {
   required_plugins {
@@ -73,6 +73,11 @@ variable "grafana_version" {
   default = null
 }
 
+variable "nginx_version" {
+  type    = string
+  default = null
+}
+
 source "googlecompute" "ops" {
   project_id              = var.project
   zone                    = var.zone
@@ -94,13 +99,14 @@ source "googlecompute" "ops" {
 
   image_name        = "dz-ops-${var.image_version}"
   image_family      = "dz-ops"
-  image_description = "${var.source_image_family} + Semaphore UI ${var.semaphore_version} + Ansible ${var.ansible_version} + ClickHouse ${var.clickhouse_version} + Grafana ${var.grafana_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description = "${var.source_image_family} + Semaphore UI ${var.semaphore_version} + Ansible ${var.ansible_version} + ClickHouse ${var.clickhouse_version} + Grafana ${var.grafana_version} + nginx ${var.nginx_version} (systemd). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor     = "ops"
     semaphore  = replace(var.semaphore_version, ".", "-")
     ansible    = replace(var.ansible_version, ".", "-")
     clickhouse = replace(var.clickhouse_version, ".", "-")
     grafana    = replace(var.grafana_version, ".", "-")
+    nginx      = replace(var.nginx_version, ".", "-")
     built      = "cloudbuild"
   }
 }
@@ -120,6 +126,11 @@ build {
     destination = "/tmp/scripts/"
   }
 
+  # nginx uses install-nginx-static.sh, not install-nginx.sh: this flavor never
+  # runs Tomcat, so the latter's `upstream tomcat` and proxy-to-tomcat.conf
+  # snippet would be dead weight. It bakes the :80 server block, /nginx-health
+  # and an EMPTY /etc/nginx/app.d/ - no routing to Grafana (:3000) or Semaphore
+  # (:3001). That is a deploy-time decision, like every other service's config.
   provisioner "shell" {
     execute_command = "sudo -E bash '{{ .Path }}'"
     environment_vars = [
@@ -133,6 +144,7 @@ build {
       "bash /tmp/scripts/semaphore/install-semaphore.sh",
       "bash /tmp/scripts/clickhouse/install-clickhouse.sh",
       "bash /tmp/scripts/install-grafana.sh",
+      "bash /tmp/scripts/nginx/install-nginx-static.sh",
       "bash /tmp/scripts/otelcol/install-otel.sh",
       "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/install-python.sh",

@@ -445,8 +445,9 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   README contract as `install-nginx.sh`, just without the Tomcat pieces. See
   `images/ubuntu/nginx/nginx.md`.
 - `ops` (family `dz-ops`): basic tools + Ansible (venv) + Semaphore UI +
-  ClickHouse + Grafana with the ClickHouse datasource plugin. **No Java, no
-  Tomcat, no nginx.** Named for its purpose, like `mcp`, rather than
+  ClickHouse + Grafana with the ClickHouse datasource plugin + nginx (via
+  `install-nginx-static.sh`, enabled on `:80` with no routing baked). **No
+  Java, no Tomcat.** Named for its purpose, like `mcp`, rather than
   by joining tool names: four tools made that name too long. Only ClickHouse is enabled
   (loopback-only, safe as baked). Grafana (it would boot into `admin/admin`) and
   Semaphore (it cannot start without its secrets) are installed but **not
