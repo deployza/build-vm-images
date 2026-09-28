@@ -39,10 +39,12 @@
 # on PATH through /etc/profile.d for interactive and login shells only.
 #
 # PEP 668 does not apply inside this prefix: it is our own interpreter, not an
-# externally-managed distro one, so `pip install` works directly. Applications
-# should still build their own venv from it (`/opt/python/latest/bin/python3 -m
-# venv ...`) the way install-mkdocs.sh and install-mcp.sh do, so one app's
-# dependency set cannot break another's.
+# externally-managed distro one, so `pip install` works directly. An application
+# that uses it should still build its own venv from it
+# (`/opt/python/latest/bin/python3 -m venv ...`), so one app's dependency set
+# cannot break another's. The baked venvs today (install-mkdocs.sh,
+# install-mcp.sh, install-ansible.sh) are NOT such apps: as above, they are
+# built from the distro python3, before this script runs.
 set -euxo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -12,6 +12,26 @@ substitutions:
   _IMAGE_VERSION: '1-1'
 
 steps:
+  # Fail in seconds, not after a 20-25 minute bake: Packer would otherwise build
+  # the whole VM and only then discover it cannot create an image whose name is
+  # taken (i.e. _IMAGE_VERSION was not bumped). The name and project must match
+  # image_name / project in image.pkr.hcl. `list` rather than `describe`, so a
+  # permission or API error still fails the step instead of reading as "absent".
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: check-image-free
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        image="dz-mysql-${_IMAGE_VERSION}"
+        found=$$(gcloud compute images list --project=dz-builds --no-standard-images --filter="name=$$image" --format="value(name)")
+        if [ -n "$$found" ]; then
+          echo "ERROR: image $$image already exists in dz-builds - bump _IMAGE_VERSION." >&2
+          exit 1
+        fi
+        echo "OK: $$image is free."
+
   - name: 'gcr.io/cloud-builders/git'
     id: debug-source
     entrypoint: 'bash'

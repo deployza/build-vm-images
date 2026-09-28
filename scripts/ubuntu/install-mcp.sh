@@ -33,7 +33,15 @@ source "$SCRIPT_DIR/versions.env"
 
 export DEBIAN_FRONTEND=noninteractive
 
-# python3 is in the Ubuntu base image; python3-venv is not, and is required.
+# python3 + python3-venv both come from install-basics.sh now, so this is
+# redundant in this flavor. Kept anyway, as in install-mkdocs.sh: an installer
+# must stand on its own if the flavor's ordering ever changes.
+#
+# THE DISTRO python3 (3.12), NOT the pinned /opt/python one, on purpose.
+# install-python.sh runs after this script, so /opt/python does not exist yet;
+# and graphify's tree-sitter grammar wheels and fastmcp were validated end to
+# end on 3.12 (see GRAPHIFY_VERSION in versions.env). Moving the venv to 3.14
+# is a deliberate change to re-validate, not a side effect of a template edit.
 apt-get update -y
 apt-get install -y python3 python3-venv
 rm -rf /var/lib/apt/lists/*
