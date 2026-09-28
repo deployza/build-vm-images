@@ -86,12 +86,14 @@ source "googlecompute" "ops" {
   ssh_username            = "packer"
 
   # disk_size is also the resulting image's size, so a VM booting it needs a
-  # boot disk of at least 20GB. The bake VM keeps googlecompute's default
+  # boot disk of at least 10GB. The bake VM keeps googlecompute's default
   # machine type (e2-standard-2): no step in the bake is CPU-bound.
   #
-  # 20GB also has to fit this flavor's own payload, the largest in the repo:
-  # clickhouse-common-static alone is several hundred MB unpacked.
-  disk_size = 20
+  # 10GB, the base image's size, rather than room to grow: a VM gets more by
+  # sizing its boot disk above the image at launch. It still has to fit this
+  # flavor's own payload, the largest in the repo: clickhouse-common-static
+  # alone is several hundred MB unpacked.
+  disk_size = 10
 
   image_name        = "dz-ops-${var.image_version}"
   image_family      = "dz-ops"

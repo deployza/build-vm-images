@@ -9,8 +9,8 @@
 # "install-basics.sh".
 #
 # WHAT DEPENDS ON IT. The pushed app-deploy scripts use `gcloud`/`gsutil` to
-# pull the app's WAR and conf from GCS, the MCP server's gcp-secret helper
-# (pushed by build-ops) reads Secret Manager through it, and it is the first
+# pull the app's WAR and conf from GCS, the pushed deploy scripts read Secret
+# Manager through it (build-ops mcp-vm/mcp.sh, ops-vm), and it is the first
 # thing anyone SSHing into a VM reaches for. It is baseline, not per-flavor.
 #
 # IT RUNS ON THE DISTRO INTERPRETER. The gcloud CLI ships its own bundled

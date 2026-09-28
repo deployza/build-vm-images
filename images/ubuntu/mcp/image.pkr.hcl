@@ -77,9 +77,9 @@ source "googlecompute" "mcp" {
   ssh_username            = "packer"
 
   # disk_size is also the resulting image's size, so a VM booting it needs a
-  # boot disk of at least 20GB. The bake VM keeps googlecompute's default
+  # boot disk of at least 10GB. The bake VM keeps googlecompute's default
   # machine type (e2-standard-2): no step in the bake is CPU-bound.
-  disk_size = 20
+  disk_size = 10
 
   image_name              = "dz-mcp-${var.image_version}"
   image_family            = "dz-mcp"

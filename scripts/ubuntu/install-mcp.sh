@@ -69,7 +69,7 @@ rm -rf /var/lib/apt/lists/*
 # flow, never an automatic upgrade.
 #
 # It shares the venv rather than getting its own. Two venvs would double ~200 MB of
-# wheels on a 20 GB boot disk for no isolation that matters — both processes run as
+# wheels on a 10 GB boot disk for no isolation that matters — both processes run as
 # the same unprivileged user on the same box.
 #
 # py-key-value-aio[disk] is stated explicitly, not left to arrive as somebody's
