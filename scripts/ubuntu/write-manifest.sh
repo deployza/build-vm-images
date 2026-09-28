@@ -74,20 +74,11 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
-  # CPython under /opt/python is a SECOND interpreter alongside the distro's
-  # (every flavor). Record both: "which python3 do I get" is the first
-  # question anyone debugging this box asks, and the answer differs between a
-  # login shell (/etc/profile.d puts /opt/python/latest first) and a systemd
-  # unit or apt shebang (still /usr/bin/python3).
-  if [ -x /opt/python/latest/bin/python3 ]; then
-    echo "== python (/opt/python/latest) =="
-    /opt/python/latest/bin/python3 --version 2>&1 || true
-    readlink -f /opt/python/latest 2>/dev/null || true
-    echo
-    echo "== system python3 (/usr/bin/python3, used by apt + gcloud) =="
-    /usr/bin/python3 --version 2>&1 || true
-    echo
-  fi
+  # The distro interpreter is the only Python on every flavor (install-basics.sh);
+  # apt, gcloud and the baked venvs all run on it.
+  echo "== python3 (/usr/bin/python3, distro) =="
+  /usr/bin/python3 --version 2>&1 || true
+  echo
 
   # mkdocs lives in a venv, not on PATH (nginx flavor only) — same reasoning
   # as graphify below: the plugin set matters more than the bare version, and

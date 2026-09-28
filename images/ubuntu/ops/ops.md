@@ -71,7 +71,7 @@ unit, not the deploy.
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 Every flavor also carries the baseline: otelcol (inert), cloud-sql-proxy (not
-enabled), the pinned CPython, and the log policy.
+enabled), and the log policy.
 
 ## Build
 

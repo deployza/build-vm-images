@@ -6,8 +6,7 @@
 # with its own signing key, not a distro package, so it carries a failure mode
 # the rest of basics does not: a key or repo URL that changes upstream breaks
 # every bake, and the build log should name the step that broke rather than
-# "install-basics.sh". Same reasoning as install-python.sh being its own file
-# and its own provisioner line.
+# "install-basics.sh".
 #
 # WHAT DEPENDS ON IT. The pushed app-deploy scripts use `gcloud`/`gsutil` to
 # pull the app's WAR and conf from GCS, the MCP server's gcp-secret helper
@@ -15,8 +14,8 @@
 # thing anyone SSHing into a VM reaches for. It is baseline, not per-flavor.
 #
 # IT RUNS ON THE DISTRO INTERPRETER. The gcloud CLI ships its own bundled
-# Python but falls back to /usr/bin/python3, which is why install-python.sh
-# never repoints that symlink. Order matters only in one direction: this needs
+# Python but falls back to /usr/bin/python3, so nothing may repoint that
+# symlink. Order matters only in one direction: this needs
 # the apt basics (ca-certificates, curl, gnupg2, apt-transport-https) that
 # install-basics.sh puts down, so it runs after it.
 set -euxo pipefail

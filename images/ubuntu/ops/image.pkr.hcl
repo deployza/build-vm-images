@@ -85,17 +85,13 @@ source "googlecompute" "ops" {
   source_image_project_id = [var.source_image_project_id]
   ssh_username            = "packer"
 
-  # BAKE VM SIZE AND DISK ARE SET BY install-python.sh, WHICH COMPILES CPYTHON
-  # (PGO+LTO) ON EVERY FLAVOR -- see that script's header. On 8 vCPUs it is
-  # minutes; on googlecompute's e2-standard-2 default, well over half an hour.
-  # The disk must hold the base image, build-essential and a full CPython
-  # source tree at once. This VM exists only for the bake. Keep these in step
-  # with cloudbuild.yaml's `timeout`, not instead of it.
+  # disk_size is also the resulting image's size, so a VM booting it needs a
+  # boot disk of at least 20GB. The bake VM keeps googlecompute's default
+  # machine type (e2-standard-2): no step in the bake is CPU-bound.
   #
   # 20GB also has to fit this flavor's own payload, the largest in the repo:
   # clickhouse-common-static alone is several hundred MB unpacked.
-  machine_type = "e2-standard-8"
-  disk_size    = 20
+  disk_size = 20
 
   image_name        = "dz-ops-${var.image_version}"
   image_family      = "dz-ops"
@@ -147,7 +143,6 @@ build {
       "bash /tmp/scripts/nginx/install-nginx-static.sh",
       "bash /tmp/scripts/otelcol/install-otel.sh",
       "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
-      "bash /tmp/scripts/install-python.sh",
       "bash /tmp/scripts/logs/logs-system.sh",
       "bash /tmp/scripts/logs/logs-disk-tools.sh",
       "bash /tmp/scripts/write-manifest.sh",

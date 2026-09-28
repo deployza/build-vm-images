@@ -44,7 +44,7 @@ The first flavor with no Java and no Tomcat.
 
 ## Contents
 
-- `install-basics.sh`, `install-gcloud.sh`, `install-python.sh` — the baseline
+- `install-basics.sh`, `install-gcloud.sh` — the baseline
   every flavor gets (git and jq included; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-mcp.sh` — `python3-venv` and the venv:
   `graphifyy[mcp,terraform,sql]`, `fastmcp` and `py-key-value-aio[disk]`,

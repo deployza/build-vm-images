@@ -38,7 +38,6 @@ OTELCOL_URL="https://github.com/open-telemetry/opentelemetry-collector-releases/
 # and install-tomcat.sh, which both fetch a pinned tarball over
 # HTTPS and extract it. TLS to the release host is the trust boundary, and the
 # pinned version in versions.env is what makes the bake reproducible.
-# (install-python.sh is the one exception in this directory.)
 
 
 echo "== Create the otelcol service user =="

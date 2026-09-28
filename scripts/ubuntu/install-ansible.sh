@@ -8,9 +8,8 @@
 # way to pin a patch. PyPI is the only place an exact ansible + ansible-core
 # pair can be named.
 #
-# BUILT FROM THE DISTRO python3, not the pinned CPython: install-python.sh runs
-# last in every template, so /opt/python does not exist yet when this runs.
-# That is fine — both pins need Python >= 3.12, which is what Ubuntu 24.04 ships.
+# BUILT FROM THE DISTRO python3, the only Python on the image. Both pins need
+# Python >= 3.12, which is what Ubuntu 24.04 ships.
 #
 # ON PATH, UNLIKE mkdocs/graphify. Those venvs are invoked by absolute path from
 # the units build-ops pushes. Ansible is invoked by Semaphore, which runs

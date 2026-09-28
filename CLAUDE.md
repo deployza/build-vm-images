@@ -38,7 +38,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > **Self-contained installers.** The installers (`install-basics.sh`,
 > `install-gcloud.sh`,
 > `install-java.sh`, `install-tomcat.sh`, `install-nginx.sh`, `install-mysql.sh`,
-> `install-python.sh`, `write-manifest.sh`, `versions.env`, `setenv.sh`,
+> `write-manifest.sh`, `versions.env`, `setenv.sh`,
 > `server.xml`, `tomcat.service`) live under `scripts/<os>/`, or, where a
 > component owns several files, under a per-component subfolder of it
 > (`scripts/<os>/tomcat/`, `.../otelcol/`, ... — see the layout below).
@@ -160,7 +160,7 @@ systemd units), the host owns log and disk management. Two layers:
   `scripts/ubuntu/logs/logs-disk-tools.sh` (`disk-audit` / `disk-alert` helpers). Set
   only what differs from the OS defaults. Both run on **every** flavor, last
   before `write-manifest.sh` — `logs-disk-tools.sh` does `apt-get clean`, so it
-  has to follow the last apt work (`install-python.sh`) to reclaim anything.
+  has to follow the last apt work to reclaim anything.
   They lived at `scripts/` root until 2026-09-24 and were therefore never
   shipped by the file provisioner (`source = "scripts/ubuntu/"`) and had never
   run; do not move them back out.
@@ -265,7 +265,6 @@ build-vm-images/
                               # every installer sources it, grouped ones as ../versions.env)
       install-basics.sh       # apt basics ONLY (distro python3 + venv/pip included)
       install-gcloud.sh       # Google Cloud CLI: third-party apt repo + key
-      install-python.sh       # pinned CPython, compiled; its own provisioner line, kept LAST
       install-java.sh
       install-mysql.sh
       install-mkdocs.sh
@@ -501,68 +500,36 @@ are not updated by a bake.
 
 Each image runs `install-basics.sh` then `install-gcloud.sh` first, then the
 additional installer scripts required by that flavor, then `install-otel.sh` +
-`install-cloud-sql-proxy.sh`, and finishes with `install-python.sh`, the two
-`logs/` scripts and `write-manifest.sh`.
+`install-cloud-sql-proxy.sh`, and finishes with the two `logs/` scripts and
+`write-manifest.sh`.
 
 > **Every installer gets its own provisioner line — no installer calls
-> another.** `install-basics.sh` used to end by invoking `install-python.sh`,
-> and used to add the Google Cloud apt repo itself. Both are now separate files
-> with their own line in every `image.pkr.hcl`. Chaining hid two steps with
-> quite different failure modes — an upstream repo signing key, and a
-> 15-minute source build — behind one `install-basics.sh` entry in the build
-> log, and it meant a template did not say what the flavor actually installs.
-> The three baseline lines (`basics`, `gcloud`, `python`) are now as visible in
+> another.** `install-basics.sh` used to add the Google Cloud apt repo itself;
+> that is now `install-gcloud.sh`, with its own line in every `image.pkr.hcl`.
+> Chaining hid a step with a different failure mode — an upstream repo signing
+> key — behind one `install-basics.sh` entry in the build log, and it meant a
+> template did not say what the flavor actually installs.
+> The two baseline lines (`basics`, `gcloud`) are now as visible in
 > a diff as `install-otel.sh` and `install-cloud-sql-proxy.sh` are, and a new
 > flavor that omits one is caught by reading the template rather than by a
 > missing binary on a booted VM. `nginx-tomcat.sh` already worked this way for
 > the same reason; keep it that way for anything added next.
 >
-> **`install-python.sh` is kept LAST among the installers** — only the `logs/`
-> scripts and `write-manifest.sh` follow it.
-> It is by far the slowest step, so every cheap failure in every other
-> installer surfaces before the compile rather than 15 minutes after it.
-> Nothing in a bake depends on its output — `install-mkdocs.sh` and
-> `install-mcp.sh` build their venvs from the **distro** `python3` that
-> `install-basics.sh` puts down — so running it last costs nothing.
-
-> **Python is baseline on every flavor, and it costs every bake 10-20
-> minutes.** `install-basics.sh` installs the distro's
-> `python3`/`python3-venv`/`python3-pip` from apt, and a separate
-> `install-python.sh` line in every flavor's template **compiles** the pinned
-> CPython from source into `/opt/python/<version>` (symlink
-> `/opt/python/latest`, the same `/opt/<tool>/latest` layout as
-> `/opt/java/latest`).
+> **The distro Python (3.12) is the only Python on every flavor.**
+> `install-basics.sh` installs `python3`/`python3-venv`/`python3-pip` from
+> Ubuntu's apt repo; `install-mkdocs.sh`, `install-mcp.sh` and
+> `install-ansible.sh` build their venvs from it, and apt, unattended-upgrades
+> and the gcloud CLI run against it. Install app dependencies into a venv — the
+> interpreter is externally managed (PEP 668) and refuses a bare `pip install`.
+> **Never repoint `/usr/bin/python3`**; it is the classic way to leave a box
+> unable to run apt.
 >
-> Source-built because there is no alternative that stays pinned: Ubuntu 24.04
-> has no 3.14 package at all, and the usual backport (the deadsnakes PPA)
-> publishes "latest 3.14.x" rather than a named patch, so an apt route would
-> hand a *different* interpreter to each rebuild. `PYTHON_VERSION` in
-> `versions.env` is therefore a full `X.Y.Z`, and the script verifies at bake
-> time that what it built reports exactly that.
->
-> **Consequence for every flavor, including a new one you add:** the PGO+LTO
-> build needs `machine_type = "e2-standard-8"` and `disk_size = 20` in the
-> template, and `timeout: 3600s` in `cloudbuild.yaml` — Cloud Build's
-> 10-minute default cannot fit it, and a timeout strands the temp Packer VM.
-> All seven flavors carry all three. **Copy them into any new flavor** or its
-> first bake fails on the clock, in a way that looks nothing like a Python
-> problem.
->
-> The cheaper alternatives were considered and rejected: keeping the compile
-> opt-in per flavor, and publishing a prebuilt tarball to
-> `${FILES_BASE_URL}/installables/` the way the JDK is shipped. The tarball
-> route is the one to revisit if bake time becomes painful — it would return
-> every flavor to a seconds-long install, at the price of a manual
-> build-and-upload step on each Python bump.
->
-> **Never repoint `/usr/bin/python3` at it.** The distro interpreter stays the
-> system one — apt, unattended-upgrades and the gcloud CLI all run against it —
-> so `install-python.sh` uses a private prefix and adds only **versioned**
-> names (`python3.14`, `pip3.14`) to `/usr/local/bin`. A bare `python3` there
-> would sit ahead of `/usr/bin` for every root process and is the classic way
-> to leave a box unable to run apt. Unversioned names reach login shells
-> through `/etc/profile.d/python.sh` only, so a systemd unit that wants this
-> interpreter must name it (`python3.14`, or its venv's own `bin/python`).
+> A pinned CPython used to be compiled from source on every flavor
+> (`install-python.sh`, into `/opt/python`). It was removed on 2026-09-28:
+> nothing on the fleet used it, and the compile cost every bake 10-20 minutes
+> and forced an 8-vCPU bake VM. If an app ever needs a newer interpreter, add
+> it for that app (a venv built with `uv`, which fetches an exact prebuilt
+> Python) rather than bringing back a fleet-wide compile.
 >
 > **Python is not an image label.** Labels carry what distinguishes a flavor,
 > and baseline tools (git and curl from `install-basics.sh`, gcloud from
