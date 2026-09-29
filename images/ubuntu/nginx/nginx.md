@@ -27,37 +27,23 @@ not a shared source.
 - `install-nginx-static.sh` — nginx from the official nginx.org stable apt
   repo, `nginx` systemd service, static config at
   `/etc/nginx/conf.d/static.conf`
-- `install-mkdocs.sh` — Python + a venv at `/opt/mkdocs/venv` holding
-  `mkdocs` + `mkdocs-material` + `mkdocs-awesome-pages-plugin`, pinned to
-  match `www-apidocs/requirements.txt` exactly. See "MkDocs toolchain" below.
+- ~~`install-mkdocs.sh`~~ — **not since 1-4.** See "MkDocs toolchain" below.
 
 Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts/ubuntu/versions.env).
 
 ## MkDocs toolchain
 
-This image bakes **the toolchain only** — a venv with `mkdocs` and its two
-plugins installed — not a `www-apidocs` checkout, not a build, and no
-`mkdocs.yml`. That is deliberate: the VM clones `www-apidocs` from GitHub and
-runs `mkdocs build --strict` itself, through an on-demand `docs-refresh`
-service that `build-ops` installs (`vm/deployza-vm/www-apidocs.sh`), instead
-of Cloud Build producing `site/` for the VM to pull from GCS.
+**Moved to the `mcp` flavor in 1-4** (dz-mcp 1-6). Images 1-1 to 1-3 baked a
+venv at `/opt/mkdocs/venv` so www-vm could clone `www-apidocs` and run
+`mkdocs build --strict` itself — which put a GitHub PAT and an outbound route to
+github.com on the internet-facing web server. The build now runs on the mcp VM
+(build-ops `vm/mcp-vm/apidocs-publish.sh`), which already reaches GitHub for its
+graph refresh, and publishes the site to `gs://dz-builds-api-docs`; www-vm's
+`www-apidocs` unit only downloads it, needing nothing beyond `gcloud` and `tar`.
 
-Baked at `/opt/mkdocs/venv` — same self-contained-venv pattern as the `mcp`
-flavor's graphify install (`install-mcp.sh`), for the same reason: Ubuntu's
-system Python is externally managed (PEP 668), so `pip install` outside a
-venv is refused outright, and baking avoids making PyPI's availability a
-boot-time dependency. Invoke it as `/opt/mkdocs/venv/bin/mkdocs build
---strict` from inside a `www-apidocs` checkout.
-
-**Versions are pinned to match `www-apidocs/requirements.txt` exactly**
-(`MKDOCS_VERSION`, `MKDOCS_MATERIAL_VERSION`, `MKDOCS_AWESOME_PAGES_VERSION`
-in `versions.env`) — the VM must build with the same plugin versions as
-whoever last verified the site with `mkdocs serve` locally, or a page could
-pass `--strict` in one place and fail it in the other for a plugin-version
-reason invisible in the markdown itself. Bump both together, deliberately,
-same as any other pinned version in this repo — this is the one flavor asset
-that tracks a *different* repo's pin, so a `www-apidocs` requirements bump
-must be mirrored here (and vice versa) or the two drift silently.
+A VM still on 1-1 to 1-3 keeps the old venv, unused. The pin rationale (match
+`www-apidocs/requirements.txt` exactly) moved with the installer — see
+[`../mcp/mcp.md`](../mcp/mcp.md) and `versions.env`.
 
 ## nginx configuration
 
@@ -186,3 +172,4 @@ Consumers launch with `--image-family=dz-nginx --image-project=dz-builds`.
 | ------- | ---------- | ------------------------------ |
 | 1-0     | 2026-09-07 | Initial `nginx` image — basics + nginx serving static content, no Java/Tomcat/MySQL. Built for `www.deployza.com` (marketing site + `/docs/`). |
 | 1-1     | 2026-09-09 | Bake the MkDocs toolchain (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`) so `website-vm` can build `www-apidocs`' site itself at deploy time instead of pulling a pre-built `site/` from GCS. |
+| 1-4     | 2026-09-29 | **Drop the MkDocs toolchain** — it moved to the `mcp` flavor (dz-mcp 1-6) with the docs build. www-vm now pulls the built site from `gs://dz-builds-api-docs`. Nothing forces a www-vm rebuild: the current VM just keeps an unused venv. |

@@ -7,7 +7,7 @@ options:
 timeout: 3600s
 
 substitutions:
-  _IMAGE_VERSION: '1-3'
+  _IMAGE_VERSION: '1-4'
 
 steps:
   # Fail in seconds, not after a 20-25 minute bake: Packer would otherwise build
@@ -50,6 +50,5 @@ steps:
             -var=image_version=${_IMAGE_VERSION} \
             -var=git_sha=${COMMIT_SHA} \
             -var=nginx_version=$$NGINX_VERSION \
-            -var=mkdocs_version=$$MKDOCS_VERSION \
             images/ubuntu/nginx/image.pkr.hcl
         done

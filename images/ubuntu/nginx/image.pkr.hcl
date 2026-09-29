@@ -57,13 +57,9 @@ variable "nginx_version" {
   default = null
 }
 
-# MkDocs toolchain, baked so a VM can `mkdocs build` a www-apidocs checkout
-# itself at deploy time (build-ops vm/deployza-vm/www-apidocs.sh). Same
-# versions.env-sourced -var pattern as nginx_version above.
-variable "mkdocs_version" {
-  type    = string
-  default = null
-}
+# NO mkdocs_version since 1-4: the MkDocs toolchain moved to the mcp flavor with
+# the API docs build (build-ops vm/mcp-vm/apidocs-publish.sh). www-vm now only
+# downloads the built site.
 
 source "googlecompute" "nginx" {
   project_id              = var.project
@@ -79,11 +75,10 @@ source "googlecompute" "nginx" {
 
   image_name              = "dz-nginx-${var.image_version}"
   image_family            = "dz-nginx"
-  image_description       = "${var.source_image_family} + nginx ${var.nginx_version} (systemd) + mkdocs ${var.mkdocs_version}. No Java/Tomcat/MySQL. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + nginx ${var.nginx_version} (systemd). No Java/Tomcat/MySQL. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor = "nginx"
     nginx  = replace(var.nginx_version, ".", "-")
-    mkdocs = replace(var.mkdocs_version, ".", "-")
     built  = "cloudbuild"
   }
 }
@@ -110,7 +105,6 @@ build {
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/nginx/install-nginx-static.sh",
-      "bash /tmp/scripts/install-mkdocs.sh",
       "bash /tmp/scripts/otelcol/install-otel.sh",
       "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/logs/logs-system.sh",

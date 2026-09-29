@@ -49,6 +49,14 @@ The first flavor with no Java and no Tomcat.
 - `install-mcp.sh` — `python3-venv` and the venv:
   `graphifyy[mcp,terraform,sql]`, `fastmcp` and `py-key-value-aio[disk]`,
   plus an import smoke test
+- `install-mkdocs.sh` (from 1-6) — a second venv at `/opt/mkdocs/venv`:
+  `mkdocs` + `mkdocs-material` + `mkdocs-awesome-pages-plugin`, pinned to match
+  `www-apidocs/requirements.txt`. The toolchain of build-ops' `apidocs-publish`
+  unit, which builds the API docs on this VM and publishes them to
+  `gs://dz-builds-api-docs` for www-vm. Moved here from the `nginx` flavor —
+  this VM already reaches GitHub for the graph refresh, so the web server no
+  longer has to. Its own venv, not the graphify one: the two pin unrelated
+  dependency trees.
 - `otelcol/install-otel.sh`, `cloud-sql-proxy/…`, `logs/…`, `write-manifest.sh`
   — inert on every flavor, as usual
 
@@ -169,3 +177,4 @@ Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 | 1-0     | 2026-08-31 | Initial `mcp` image. Renamed wholesale from the former `graphify` family — flavor, units, helpers, service user, venv and env file all now say `mcp`; only upstream's own names (`graphifyy`, `graphify.serve`, `GRAPHIFY_API_KEY`, `.graphify`) are unchanged. `/data` moves onto the boot disk, so no `attached_disk` is required; `mcp-boot` still mounts one if present. Carries forward everything the `graphify` family had learned — the gcloud `CLOUDSDK_CONFIG` fix, per-repo failure tolerance in the refresh, and the tokenless Markdown pass with its vendored extractor and bake-time drift check. |
 | 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT was then shared with `website-vm`'s docs-refresh). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
 | 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |
+| 1-6     | 2026-09-29 | **Bakes the MkDocs toolchain** (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`, moved from the `nginx` flavor) for build-ops' new `apidocs-publish` unit, which builds `www-apidocs` here and publishes it to `gs://dz-builds-api-docs`. That unit refuses to install on 1-5 or earlier. **Reaching the running VM means a rebuild** (`mcp-vm-boot` ignores image changes): a new boot disk, so `/data` starts empty — the first graph takes ~12 min and everyone signs in again. |

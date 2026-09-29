@@ -80,7 +80,7 @@ MANIFEST=/etc/image-manifest.txt
   /usr/bin/python3 --version 2>&1 || true
   echo
 
-  # mkdocs lives in a venv, not on PATH (nginx flavor only) — same reasoning
+  # mkdocs lives in a venv, not on PATH (mcp flavor from 1-6) — same reasoning
   # as graphify below: the plugin set matters more than the bare version, and
   # a plugin-version mismatch against www-apidocs/requirements.txt is
   # otherwise invisible until `mkdocs build --strict` fails on the VM.

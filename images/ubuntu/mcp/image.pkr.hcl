@@ -4,6 +4,7 @@
 #
 # The first flavor with no Java and no Tomcat. It bakes NO application: the
 # units, helpers, gateway and mcp.env are pushed by build-ops (vm/mcp-vm/).
+# From 1-6 it also bakes the MkDocs venv the apidocs-publish unit builds with.
 # See mcp.md.
 packer {
   required_plugins {
@@ -69,6 +70,14 @@ variable "fastmcp_version" {
   default = null
 }
 
+# MkDocs toolchain (from 1-6), baked so build-ops' apidocs-publish unit can
+# `mkdocs build` www-apidocs on this VM and publish it for www-vm. Moved here
+# from the nginx flavor, which no longer builds anything.
+variable "mkdocs_version" {
+  type    = string
+  default = null
+}
+
 source "googlecompute" "mcp" {
   project_id              = var.project
   zone                    = var.zone
@@ -83,11 +92,12 @@ source "googlecompute" "mcp" {
 
   image_name              = "dz-mcp-${var.image_version}"
   image_family            = "dz-mcp"
-  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} + fastmcp ${var.fastmcp_version} venv (MCP server runtime; the app is pushed by build-ops). Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} + fastmcp ${var.fastmcp_version} venv (MCP server runtime) + mkdocs ${var.mkdocs_version} venv (API docs build); the apps are pushed by build-ops. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor   = "mcp"
     graphify = replace(var.graphify_version, ".", "-")
     fastmcp  = replace(var.fastmcp_version, ".", "-")
+    mkdocs   = replace(var.mkdocs_version, ".", "-")
     built    = "cloudbuild"
   }
 }
@@ -118,6 +128,7 @@ build {
       "bash /tmp/scripts/install-basics.sh",
       "bash /tmp/scripts/install-gcloud.sh",
       "bash /tmp/scripts/install-mcp.sh",
+      "bash /tmp/scripts/install-mkdocs.sh",
       "bash /tmp/scripts/otelcol/install-otel.sh",
       "bash /tmp/scripts/cloud-sql-proxy/install-cloud-sql-proxy.sh",
       "bash /tmp/scripts/logs/logs-system.sh",
