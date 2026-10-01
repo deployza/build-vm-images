@@ -102,6 +102,11 @@ These are self-contained — there is no build-time dependency on a sibling repo
   not installed in this environment, and these templates target GCE — builds only
   run in Cloud Build (from the repo root, `/workspace`). Reason about template
   correctness by reading the HCL; the real validation is the next Cloud Build run.
+- **Never run `gcloud`, `gsutil`, `bq` or `terraform` yourself**, read-only
+  commands included. Every command in this file, from `gcloud builds submit` to
+  the one-time setup commands, is for the user to run. Print it and hand it over,
+  or ask for an explicit yes first. See "Cloud CLI commands" in
+  [`../build-docs/conventions.md`](../build-docs/conventions.md).
 - **A hand-run `gcloud builds submit` MUST pass `--service-account`.** Cloud Build
   no longer defaults to the legacy `<project-number>@cloudbuild.gserviceaccount.com`;
   a build submitted without an explicit identity runs as the **Compute Engine
