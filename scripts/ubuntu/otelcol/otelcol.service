@@ -6,6 +6,14 @@ Description=OpenTelemetry Collector (contrib)
 After=network-online.target
 Wants=network-online.target
 
+# Do not thrash if a pushed config is broken in a way that crashes on startup:
+# five failures inside a minute and systemd gives up, leaving a clean failed
+# state for the push's post-restart check to detect rather than a restart loop
+# that looks alive. [Unit], not [Service]: systemd ignores StartLimitIntervalSec
+# there, with a warning on every daemon-reload.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
 [Service]
 User=otelcol
 Group=otelcol
@@ -33,13 +41,7 @@ EnvironmentFile=-/etc/otelcol/env
 
 Restart=always
 RestartSec=10
-
-# Do not thrash if a pushed config is broken in a way that crashes on startup:
-# five failures inside a minute and systemd gives up, leaving a clean failed
-# state for the push's post-restart check to detect rather than a restart loop
-# that looks alive.
-StartLimitBurst=5
-StartLimitIntervalSec=60
+# The start limit that caps this is in [Unit].
 
 # --- Hardening ----------------------------------------------------------------
 # This process reads application logs across the box and ships them off it, so

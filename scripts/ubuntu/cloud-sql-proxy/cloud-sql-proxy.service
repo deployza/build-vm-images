@@ -17,6 +17,14 @@ Wants=network-online.target
 # transient proxy failure into a dead app server.
 Before=tomcat.service
 
+# An empty CSP_INSTANCES (a baked image with the unit enabled by hand, and
+# nothing appended) makes the proxy exit instantly; without a burst limit that
+# is a tight restart loop. Five failures in a minute and systemd leaves a clean
+# failed state instead. [Unit], not [Service]: systemd ignores
+# StartLimitIntervalSec there, with a warning on every daemon-reload.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
 [Service]
 User=csqlproxy
 Group=csqlproxy
@@ -36,13 +44,7 @@ ExecStart=/opt/cloud-sql-proxy/bin/cloud-sql-proxy $CSP_FLAGS $CSP_INSTANCES
 
 Restart=always
 RestartSec=10
-
-# An empty CSP_INSTANCES (a baked image with the unit enabled by hand, and
-# nothing appended) makes the proxy exit instantly; without a burst limit that
-# is a tight restart loop. Five failures in a minute and systemd leaves a clean
-# failed state instead.
-StartLimitBurst=5
-StartLimitIntervalSec=60
+# The start limit that caps this is in [Unit].
 
 # --- Hardening ----------------------------------------------------------------
 # This process holds an authenticated path into a production database, so it is
