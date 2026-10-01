@@ -33,9 +33,15 @@ cat >/etc/mysql/mysql.conf.d/zz-log-retention.cnf <<EOF
 binlog_expire_logs_seconds = ${MYSQL_BINLOG_RETENTION_SECONDS}
 EOF
 
-# Rotate MySQL's error/slow log files. This is in addition to the package's own
-# /etc/logrotate.d/mysql; flush-logs makes the server reopen its log handles
-# after rotation.
+# Rotate MySQL's error/slow log files; flush-logs makes the server reopen its
+# log handles after rotation.
+#
+# This REPLACES the package's /etc/logrotate.d/mysql-server, it cannot sit
+# beside it: both match /var/log/mysql/error.log, logrotate refuses a file named
+# by two rules ("duplicate log entry"), and logs-system.sh's dry-run fails the
+# bake on it. A deleted conffile stays deleted across package upgrades - dpkg
+# treats the removal as a local change.
+rm -f /etc/logrotate.d/mysql-server
 cat >/etc/logrotate.d/mysql-custom <<'EOF'
 /var/log/mysql/*.log {
     daily

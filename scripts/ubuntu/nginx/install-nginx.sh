@@ -171,8 +171,11 @@ EOF
 # and the step can be re-run on a live VM on its own.
 # -----------------------------------------------------------------------------
 
-# Rotate nginx's own logs. The nginx.org package ships /etc/logrotate.d/nginx,
-# but this drop-in pins the retention to the same 14-day/compressed policy the
+# Rotate nginx's own logs. The nginx.org package ships /etc/logrotate.d/nginx;
+# it is DELETED below, not left beside this drop-in: both match
+# /var/log/nginx/*.log, logrotate refuses a file named by two rules ("duplicate
+# log entry"), and logs-system.sh's dry-run fails the bake on it. A deleted
+# conffile stays deleted across package upgrades. This drop-in pins the retention to the same 14-day/compressed policy the
 # tomcat and mysql installers use, so all three services age out together.
 # USR1 makes the master reopen its log files after rotation.
 #
@@ -182,6 +185,7 @@ EOF
 # only bounds the file at the moments logrotate actually runs — stock
 # logrotate.timer fires once a day, so a same-day spike is capped at retention
 # time, not in flight. Raising the timer frequency is what would close that gap.
+rm -f /etc/logrotate.d/nginx
 cat >/etc/logrotate.d/nginx-custom <<'EOF'
 /var/log/nginx/*.log {
     daily
