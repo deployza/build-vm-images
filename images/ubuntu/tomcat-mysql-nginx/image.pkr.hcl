@@ -123,7 +123,10 @@ build {
   # after install-tomcat.sh (it edits Tomcat's server.xml) and is placed after
   # install-nginx.sh so the trust is granted only once the proxy exists.
   provisioner "shell" {
-    execute_command = "sudo -E bash '{{ .Path }}'"
+    # {{ .Vars }} is how environment_vars reach the script; bash -e stops the
+    # bake at the first failing installer. Without either, the manifest read
+    # "unknown" and a failed install-*.sh still produced an image.
+    execute_command = "sudo -E env {{ .Vars }} bash -e '{{ .Path }}'"
     environment_vars = [
       "IMAGE_FLAVOR=tomcat-mysql-nginx",
       "GIT_SHA=${var.git_sha}",

@@ -54,9 +54,12 @@ echo "== Create the semaphore service user =="
 # user, and Ansible writes ~/.ansible (its tmp dir, collections, galaxy cache)
 # and ssh writes ~/.ssh/known_hosts. A home-less system user makes every task
 # fail on its first write there.
+#
+# adduser, NOT useradd: `--system --home DIR` creates DIR by default, and there
+# is no --create-home (that is useradd's; adduser rejects it). A system user's
+# password is always disabled, so --disabled-password is not needed either.
 adduser --system --group --shell /usr/sbin/nologin \
-    --gecos 'Semaphore UI' --disabled-password \
-    --home /home/semaphore --create-home semaphore
+    --comment 'Semaphore UI' --home /home/semaphore semaphore
 
 
 echo "== Directory layout =="

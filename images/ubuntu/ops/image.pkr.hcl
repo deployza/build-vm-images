@@ -130,7 +130,10 @@ build {
   # and an EMPTY /etc/nginx/app.d/ - no routing to Grafana (:3000) or Semaphore
   # (:3001). That is a deploy-time decision, like every other service's config.
   provisioner "shell" {
-    execute_command = "sudo -E bash '{{ .Path }}'"
+    # {{ .Vars }} is how environment_vars reach the script; bash -e stops the
+    # bake at the first failing installer. Without either, the manifest read
+    # "unknown" and a failed install-*.sh still produced an image.
+    execute_command = "sudo -E env {{ .Vars }} bash -e '{{ .Path }}'"
     environment_vars = [
       "IMAGE_FLAVOR=ops",
       "GIT_SHA=${var.git_sha}",

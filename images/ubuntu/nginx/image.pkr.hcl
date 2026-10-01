@@ -96,7 +96,10 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -E bash '{{ .Path }}'"
+    # {{ .Vars }} is how environment_vars reach the script; bash -e stops the
+    # bake at the first failing installer. Without either, the manifest read
+    # "unknown" and a failed install-*.sh still produced an image.
+    execute_command = "sudo -E env {{ .Vars }} bash -e '{{ .Path }}'"
     environment_vars = [
       "IMAGE_FLAVOR=nginx",
       "GIT_SHA=${var.git_sha}",
