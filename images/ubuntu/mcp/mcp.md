@@ -16,7 +16,7 @@ its `mcp` unit:
 
 ```bash
 ansible-playbook playbooks/mcp-vm.yml --tags mcp        # from build-ops/ansible
-sudo bash vm/mcp-vm/install.sh production mcp           # or on the box
+sudo bash vm/mcp-vm/install.sh prod mcp           # or on the box
 ```
 
 The design, the units and the operator runbook are in
