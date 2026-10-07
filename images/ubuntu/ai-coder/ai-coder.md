@@ -21,6 +21,7 @@ this image serves nothing and can run no agent until that push has run.
 | `install-java.sh` | JDK (the fleet pin; matches `deployza-parent-pom`'s `java.version`) | `/opt/java/latest` |
 | `tomcat/install-tomcat.sh` | Tomcat, `tomcat` user, systemd unit | `/home/tomcat/instance` |
 | `nginx/install-nginx.sh` + `tomcat/nginx-tomcat.sh` | nginx stable on `:80`, proxying to Tomcat, empty `/etc/nginx/app.d/`; Tomcat trusts `X-Forwarded-*` from loopback | system |
+| `install-mysql.sh` | MySQL 8.0 (Ubuntu's package), systemd, listening on `127.0.0.1` only, root by socket auth, **no database or app user** (build-ops creates them for ai-coding-server). 14-day binlog retention, daily log rotation | system |
 | `install-maven.sh` | Maven, `mvn` on PATH | `/opt/maven` |
 | `install-node.sh` | Node.js LTS, `node`/`npm`/`npx` on PATH; the global npm prefix | `/opt/node` |
 | `ai-coder/install-build-tools.sh` | `build-essential`, `python3-dev`, `pkg-config` (pip source builds), `ripgrep`, `acl`, `patch`, `file`, `zip`, `xz-utils`, `less` | system |
@@ -107,7 +108,9 @@ The spec it implements is in `ai-coding-server/prompts/security.md`,
 5. **The agent's `~/.m2/settings.xml`:** one `mirrorOf *` mirror pointing at
    the proxy, with no credentials. Also create the dependency cache dirs.
 6. **The apps:** both WARs, their Tomcat context XMLs, `app.properties`
-   (mode 600), and the nginx `app.d/` routes and TLS.
+   (mode 600), and the nginx `app.d/` routes. TLS ends at the load balancer.
+   Also ai-coding-server's MySQL database and user, from secret
+   `ai-coder-db-password`, once its `install.properties` sets `install.app.db`.
 7. **otel:** add `OTEL_GROUPS` if the collector should read Tomcat's logs.
 
 ## Build
@@ -132,4 +135,4 @@ Consumers launch with
 
 | Version | Date       | Change |
 | ------- | ---------- | ------ |
-| 1-0     | 2026-10-07 | Initial image. JDK 24, Tomcat 11.0.8, nginx stable, Maven 3.9.16, Node 24.21.0, Claude Code 2.1.285, srt 0.0.78, Playwright 1.63.0 (Chromium), Reposilite 3.6.3. |
+| 1-0     | 2026-10-07 | Initial image. JDK 24, Tomcat 11.0.8, nginx stable, MySQL 8.0, Maven 3.9.16, Node 24.21.0, Claude Code 2.1.285, srt 0.0.78, Playwright 1.63.0 (Chromium), Reposilite 3.6.3. |

@@ -2,10 +2,11 @@
 # (ai-coding-server + ai-coding-ui) and its AI agents. Family: dz-ai-coder.
 #
 # Software only, per this repo's split. It bakes the web runtime (JDK, Tomcat,
-# nginx), the toolchains the agents build with (Maven, Node, gcc and Python
-# headers), the agent runtime (Claude Code, srt and its sandbox dependencies),
-# Playwright with Chromium, and the Reposilite jar. The agent user, the sudo
-# rule and launcher, secrets, Maven settings, Reposilite's config and unit, and
+# nginx), MySQL (for ai-coding-server's database), the toolchains the agents
+# build with (Maven, Node, gcc and Python headers), the agent runtime (Claude
+# Code, srt and its sandbox dependencies), Playwright with Chromium, and the
+# Reposilite jar. The agent user, the sudo rule and launcher, secrets, Maven
+# settings, Reposilite's config and unit, the app database and its user, and
 # both WARs are pushed by build-ops. See ai-coder.md.
 packer {
   required_plugins {
@@ -64,6 +65,11 @@ variable "tomcat_version" {
   default = null
 }
 
+variable "mysql_version" {
+  type    = string
+  default = null
+}
+
 variable "nginx_version" {
   type    = string
   default = null
@@ -114,12 +120,13 @@ source "googlecompute" "ai_coder" {
 
   image_name        = "dz-ai-coder-${var.image_version}"
   image_family      = "dz-ai-coder"
-  image_description = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} + nginx ${var.nginx_version} + Maven ${var.maven_version} + Node ${var.node_version} + Claude Code ${var.claude_code_version} + srt ${var.sandbox_runtime_version} + Playwright ${var.playwright_version} (Chromium) + Reposilite ${var.reposilite_version} (jar). Configured by build-ops. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description = "${var.source_image_family} + JDK ${var.jdk_version} + Tomcat ${var.tomcat_version} + nginx ${var.nginx_version} + MySQL ${var.mysql_version} + Maven ${var.maven_version} + Node ${var.node_version} + Claude Code ${var.claude_code_version} + srt ${var.sandbox_runtime_version} + Playwright ${var.playwright_version} (Chromium) + Reposilite ${var.reposilite_version} (jar). Configured by build-ops. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor     = "ai-coder"
     jdk        = replace(var.jdk_version, ".", "-")
     tomcat     = replace(var.tomcat_version, ".", "-")
     nginx      = replace(var.nginx_version, ".", "-")
+    mysql      = replace(var.mysql_version, ".", "-")
     maven      = replace(var.maven_version, ".", "-")
     node       = replace(var.node_version, ".", "-")
     claude     = replace(var.claude_code_version, ".", "-")
@@ -146,6 +153,8 @@ build {
   #   * Tomcat, then nginx, then nginx-tomcat.sh, as on tomcat-mysql-nginx.
   #     nginx is the only path to Tomcat here (both WARs under one domain), so
   #     the RemoteIpValve trust is safe to grant.
+  #   * install-mysql.sh next, as on tomcat-mysql-nginx: loopback-only, root by
+  #     socket auth, no database. build-ops creates the app's database and user.
   #   * install-node.sh before install-sandbox.sh and install-playwright.sh,
   #     which install into its global npm prefix.
   #   * install-sandbox.sh before install-claude.sh: Claude Code's own sandbox
@@ -167,6 +176,7 @@ build {
       "bash /tmp/scripts/tomcat/install-tomcat.sh",
       "bash /tmp/scripts/nginx/install-nginx.sh",
       "bash /tmp/scripts/tomcat/nginx-tomcat.sh",
+      "bash /tmp/scripts/install-mysql.sh",
       "bash /tmp/scripts/install-maven.sh",
       "bash /tmp/scripts/install-node.sh",
       "bash /tmp/scripts/ai-coder/install-build-tools.sh",

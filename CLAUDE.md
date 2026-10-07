@@ -473,7 +473,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   `uuid`, and every VM booted from the image must not share it. See
   `images/ubuntu/ops/ops.md`.
 - `ai-coder` (family `dz-ai-coder`): basic tools + Java + Tomcat + nginx
-  (with `nginx-tomcat.sh`) + Maven + Node + build tools + the agent runtime
+  (with `nginx-tomcat.sh`) + MySQL + Maven + Node + build tools + the agent runtime
   (Claude Code, `srt`, bubblewrap, socat, an AppArmor `userns` profile) +
   Playwright with Chromium + the Reposilite jar. It runs ai-coding-server and
   ai-coding-ui, plus the AI agents that build code on the VM inside the sandbox.

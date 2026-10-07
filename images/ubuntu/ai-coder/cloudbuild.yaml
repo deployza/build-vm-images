@@ -52,6 +52,7 @@ steps:
             -var=jdk_version=$$JDK_VERSION \
             -var=tomcat_version=$$TOMCAT_VERSION \
             -var=nginx_version=$$NGINX_VERSION \
+            -var=mysql_version=$$MYSQL_VERSION \
             -var=maven_version=$$MAVEN_VERSION \
             -var=node_version=$$NODE_VERSION \
             -var=claude_code_version=$$CLAUDE_CODE_VERSION \
