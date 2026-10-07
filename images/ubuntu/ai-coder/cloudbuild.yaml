@@ -22,7 +22,7 @@ steps:
       - -c
       - |
         set -euo pipefail
-        image="dz-ai-coding-${_IMAGE_VERSION}"
+        image="dz-ai-coder-${_IMAGE_VERSION}"
         found=$$(gcloud compute images list --project=dz-builds --no-standard-images --filter="name=$$image" --format="value(name)")
         if [ -n "$$found" ]; then
           echo "ERROR: image $$image already exists in dz-builds - bump _IMAGE_VERSION." >&2
@@ -31,7 +31,7 @@ steps:
         echo "OK: $$image is free."
 
   - name: 'hashicorp/packer'
-    args: ['init', 'images/ubuntu/ai-coding/image.pkr.hcl']
+    args: ['init', 'images/ubuntu/ai-coder/image.pkr.hcl']
 
   # versions.env (the installers' single source of truth) is sourced here and the
   # pinned versions passed as -var, because packer's file() can't read it from the
@@ -58,5 +58,5 @@ steps:
             -var=sandbox_runtime_version=$$SANDBOX_RUNTIME_VERSION \
             -var=playwright_version=$$PLAYWRIGHT_VERSION \
             -var=reposilite_version=$$REPOSILITE_VERSION \
-            images/ubuntu/ai-coding/image.pkr.hcl
+            images/ubuntu/ai-coder/image.pkr.hcl
         done

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Install Apache Maven under /opt/maven and put `mvn` on PATH. ai-coding flavor.
+# Install Apache Maven under /opt/maven and put `mvn` on PATH. ai-coder flavor.
 #
 # THE EXCEPTION TO "NO MAVEN ON A VM". Everywhere else WARs are built by the
-# docker maven image, and a runtime VM never compiles anything. The ai-coding VM
+# docker maven image, and a runtime VM never compiles anything. The ai-coder VM
 # is different: its agents build and test the code they write, on the VM,
 # inside the sandbox. Repos with `mvnw` still bring their own Maven version.
 #

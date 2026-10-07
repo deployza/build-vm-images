@@ -1,6 +1,6 @@
-# `ai-coding` image
+# `ai-coder` image
 
-GCE image family **`dz-ai-coding`**. It's the VM for Deployza's automated coding
+GCE image family **`dz-ai-coder`**. It's the VM for Deployza's automated coding
 system: [`ai-coding-server`](../../../../../AI/ai-coding-server) and
 [`ai-coding-ui`](../../../../../AI/ai-coding-ui), two WARs in Tomcat behind
 nginx, plus the AI agents (the `claude` CLI) that code each sprint and the
@@ -23,11 +23,11 @@ this image serves nothing and can run no agent until that push has run.
 | `nginx/install-nginx.sh` + `tomcat/nginx-tomcat.sh` | nginx stable on `:80`, proxying to Tomcat, empty `/etc/nginx/app.d/`; Tomcat trusts `X-Forwarded-*` from loopback | system |
 | `install-maven.sh` | Maven, `mvn` on PATH | `/opt/maven` |
 | `install-node.sh` | Node.js LTS, `node`/`npm`/`npx` on PATH; the global npm prefix | `/opt/node` |
-| `ai-coding/install-build-tools.sh` | `build-essential`, `python3-dev`, `pkg-config` (pip source builds), `ripgrep`, `acl`, `patch`, `file`, `zip`, `xz-utils`, `less` | system |
-| `ai-coding/install-sandbox.sh` | `srt` (sandbox-runtime, npm), `bubblewrap`, `socat`, `ripgrep`, and an AppArmor profile granting `userns` to bwrap and srt's seccomp helper | `/opt/node`, `/etc/apparmor.d/deployza-sandbox` |
-| `ai-coding/install-claude.sh` | Claude Code CLI, native binary, checksum-verified against the release manifest | `/opt/claude/bin/claude` |
-| `ai-coding/install-playwright.sh` | Playwright CLI (npm) and Chromium + headless shell + ffmpeg, with their OS libraries and fonts | `/opt/node`, `/opt/ms-playwright` |
-| `ai-coding/install-reposilite.sh` | Reposilite jar only (the read-only Maven proxy) | `/opt/reposilite/reposilite.jar` |
+| `ai-coder/install-build-tools.sh` | `build-essential`, `python3-dev`, `pkg-config` (pip source builds), `ripgrep`, `acl`, `patch`, `file`, `zip`, `xz-utils`, `less` | system |
+| `ai-coder/install-sandbox.sh` | `srt` (sandbox-runtime, npm), `bubblewrap`, `socat`, `ripgrep`, and an AppArmor profile granting `userns` to bwrap and srt's seccomp helper | `/opt/node`, `/etc/apparmor.d/deployza-sandbox` |
+| `ai-coder/install-claude.sh` | Claude Code CLI, native binary, checksum-verified against the release manifest | `/opt/claude/bin/claude` |
+| `ai-coder/install-playwright.sh` | Playwright CLI (npm) and Chromium + headless shell + ffmpeg, with their OS libraries and fonts | `/opt/node`, `/opt/ms-playwright` |
+| `ai-coder/install-reposilite.sh` | Reposilite jar only (the read-only Maven proxy) | `/opt/reposilite/reposilite.jar` |
 
 Plus the baseline every flavor carries: otelcol (inert), cloud-sql-proxy (not
 enabled, and this system has no database), and the log policy.
@@ -71,20 +71,20 @@ Each installer fails the bake rather than shipping a broken tool:
 - **Disk.** The image uses about 7 GB of its 10. Clones, worktrees, the agent's
   `~/.m2` / `~/.gradle` / `~/.cache/pip` caches and the run log spool grow
   without limit, so launch the VM with a larger boot disk or a data disk.
-- **Size the agent pool to the VM.** `ai-coding-vm` is an e2-medium (2 vCPU /
-  4 GB, decided 2026-10-07), so coding-server's `agent.pool.size` (default 5)
+- **Size the agent pool to the VM.** `ai-coder-vm` is an e2-medium (2 vCPU /
+  4 GB, decided 2026-10-07), so ai-coding-server's `agent.pool.size` (default 5)
   must be 1 or 2. Each agent may start a JVM or a browser. See
-  `build-terraform/dz-builds/ai-coding.md`.
+  `build-terraform/dz-builds/ai-coder.md`.
 
 ## What build-ops configures
 
 None of this is in the image. It is pushed by
-[`build-ops/vm/ai-coding-vm/`](../../../../build-ops/vm/ai-coding-vm/) (units
-`maven-proxy`, `agent`, `coding-server`, `coding-ui`, `otel`):
+[`build-ops/vm/ai-coder-vm/`](../../../../build-ops/vm/ai-coder-vm/) (units
+`maven-proxy`, `agent`, `ai-coding-server`, `ai-coding-ui`, `otel`):
 
 ```bash
-ansible-playbook playbooks/ai-coding-vm.yml        # from build-ops/ansible
-sudo bash vm/ai-coding-vm/install.sh prod           # or on the box
+ansible-playbook playbooks/ai-coder-vm.yml        # from build-ops/ansible
+sudo bash vm/ai-coder-vm/install.sh prod           # or on the box
 ```
 
 The spec it implements is in `ai-coding-server/prompts/security.md`,
@@ -116,7 +116,7 @@ Run from the **repo root**. The build context must include `scripts/`:
 
 ```bash
 gcloud builds submit \
-  --config images/ubuntu/ai-coding/cloudbuild.yaml \
+  --config images/ubuntu/ai-coder/cloudbuild.yaml \
   --service-account=projects/dz-builds/serviceAccounts/build-service-account@dz-builds.iam.gserviceaccount.com \
   --project=dz-builds \
   .
@@ -126,7 +126,7 @@ Bump `_IMAGE_VERSION` to publish a new image. Re-running an existing version
 fails with GCE `409 alreadyExists`.
 
 Consumers launch with
-`--image-family=dz-ai-coding --image-project=dz-builds`.
+`--image-family=dz-ai-coder --image-project=dz-builds`.
 
 ## Changelog
 

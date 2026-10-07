@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install the Claude Code CLI, pinned, at /opt/claude/bin/claude. ai-coding
+# Install the Claude Code CLI, pinned, at /opt/claude/bin/claude. ai-coder
 # flavor.
 #
 # THE NATIVE BINARY, PLACED BY HAND. The official installer

@@ -74,7 +74,7 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
-  # ai-coding flavor: the build toolchains and the agent runtime. Each is
+  # ai-coder flavor: the build toolchains and the agent runtime. Each is
   # pinned in versions.env; this records what actually landed.
   if [ -x /opt/maven/bin/mvn ]; then
     echo "== mvn --version =="

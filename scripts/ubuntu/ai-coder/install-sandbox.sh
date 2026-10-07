@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install Anthropic's sandbox-runtime (`srt`) and the OS pieces it and Claude
-# Code's own sandbox need. ai-coding flavor.
+# Code's own sandbox need. ai-coder flavor.
 #
 # WHAT THE SANDBOX IS FOR. ai-coding-server runs every build check (code an
 # agent wrote) as `sudo -u <agent user> srt -- <build command>`. Claude Code's

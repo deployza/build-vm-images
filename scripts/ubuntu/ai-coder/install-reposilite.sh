@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install the Reposilite jar at /opt/reposilite/reposilite.jar. ai-coding
+# Install the Reposilite jar at /opt/reposilite/reposilite.jar. ai-coder
 # flavor.
 #
 # WHAT IT IS FOR. Deployza Java repos inherit deployza-parent-pom from the

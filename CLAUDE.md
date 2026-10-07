@@ -44,7 +44,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > (`scripts/<os>/tomcat/`, `.../otelcol/`, ... — see the layout below).
 > They are owned by this repo. (Maven is intentionally **not** installed into the
 > VM images — WARs are built by the docker `maven` image at build time. The one
-> exception is `ai-coding`, whose AI agents build and test the code they write
+> exception is `ai-coder`, whose AI agents build and test the code they write
 > on the VM.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
 > steps inline in its Dockerfiles — the two are deliberately **independent copies,
@@ -89,7 +89,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-mysql-nginx`,
 > `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
 > static web front door), `ops` (Ansible + Semaphore UI + ClickHouse +
-> Grafana) and `ai-coding` (the automated coding system and its AI agents)
+> Grafana) and `ai-coder` (the automated coding system and its AI agents)
 > — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
 > image family is the flavor name with a `dz-` prefix (`dz-tomcat`).
 > Shared installers and
@@ -305,9 +305,9 @@ build-vm-images/
         install-semaphore.sh
         semaphore.service     # installed but NOT enabled at bake (no config yet)
         config.example.json   # baked as /etc/semaphore/config.json.example
-      install-maven.sh        # Maven under /opt/maven (ai-coding only, see above)
+      install-maven.sh        # Maven under /opt/maven (ai-coder only, see above)
       install-node.sh         # Node.js LTS under /opt/node, the global npm prefix
-      ai-coding/
+      ai-coder/
         install-build-tools.sh  # gcc, python3-dev, ripgrep, acl, ... for agent builds
         install-sandbox.sh    # srt + bubblewrap/socat; proves srt runs unprivileged
         apparmor-sandbox      # userns for bwrap + srt's seccomp helper (Ubuntu 24.04)
@@ -472,7 +472,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   config, then wipes `/var/lib/clickhouse`: first start writes the server's
   `uuid`, and every VM booted from the image must not share it. See
   `images/ubuntu/ops/ops.md`.
-- `ai-coding` (family `dz-ai-coding`): basic tools + Java + Tomcat + nginx
+- `ai-coder` (family `dz-ai-coder`): basic tools + Java + Tomcat + nginx
   (with `nginx-tomcat.sh`) + Maven + Node + build tools + the agent runtime
   (Claude Code, `srt`, bubblewrap, socat, an AppArmor `userns` profile) +
   Playwright with Chromium + the Reposilite jar. It runs ai-coding-server and
@@ -480,7 +480,7 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   **Software only:** the agent user, the sudo rule and launcher, secrets, Maven
   settings, Reposilite's config and unit, and the WARs all come from build-ops.
   The bake proves `srt` sandboxes an unprivileged user and Chromium renders a
-  page. See `images/ubuntu/ai-coding/ai-coding.md`.
+  page. See `images/ubuntu/ai-coder/ai-coder.md`.
 
 > **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/tomcat/server.xml`
 > is upstream's file with two deliberate changes (no `AccessLogValve`; a

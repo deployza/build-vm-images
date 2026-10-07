@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install Playwright and its Chromium, shared by every user, under
-# /opt/ms-playwright. ai-coding flavor.
+# /opt/ms-playwright. ai-coder flavor.
 #
 # WHAT IT IS FOR. Agents check UI work in a real browser and take before/after
 # screenshots for the PR. ai-coding-ui is static HTML, so nothing else on the

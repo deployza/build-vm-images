@@ -1,5 +1,5 @@
 #!/bin/bash
-# apt tools that AI agents and their sandboxed builds expect to find. ai-coding
+# apt tools that AI agents and their sandboxed builds expect to find. ai-coder
 # flavor.
 #
 # The JDK, Maven and the distro Python come from their own installers. This adds

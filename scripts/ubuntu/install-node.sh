@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install Node.js under /opt/node and put node/npm/npx on PATH. ai-coding flavor.
+# Install Node.js under /opt/node and put node/npm/npx on PATH. ai-coder flavor.
 #
 # THE nodejs.org TARBALL, NOT apt. Ubuntu's own nodejs is a version line behind
 # LTS, and NodeSource's apt repo can only pin a major. The tarball pins an exact
