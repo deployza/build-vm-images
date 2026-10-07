@@ -1,0 +1,62 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Above Cloud Build's 10-minute default, as a generous ceiling rather than an
+# expected duration: a timeout kills the build mid-bake and leaves the
+# temporary Packer VM behind, which is a worse failure than a slow build.
+timeout: 3600s
+
+substitutions:
+  _IMAGE_VERSION: '1-0'
+
+steps:
+  # Fail in seconds, not after a 20-25 minute bake: Packer would otherwise build
+  # the whole VM and only then discover it cannot create an image whose name is
+  # taken (i.e. _IMAGE_VERSION was not bumped). The name and project must match
+  # image_name / project in image.pkr.hcl. `list` rather than `describe`, so a
+  # permission or API error still fails the step instead of reading as "absent".
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: check-image-free
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        image="dz-ai-coding-${_IMAGE_VERSION}"
+        found=$$(gcloud compute images list --project=dz-builds --no-standard-images --filter="name=$$image" --format="value(name)")
+        if [ -n "$$found" ]; then
+          echo "ERROR: image $$image already exists in dz-builds - bump _IMAGE_VERSION." >&2
+          exit 1
+        fi
+        echo "OK: $$image is free."
+
+  - name: 'hashicorp/packer'
+    args: ['init', 'images/ubuntu/ai-coding/image.pkr.hcl']
+
+  # versions.env (the installers' single source of truth) is sourced here and the
+  # pinned versions passed as -var, because packer's file() can't read it from the
+  # template (it lives in a sibling dir, above the template's path.root). Override
+  # the image entrypoint to sh so we can source the file before invoking packer.
+  # $$VAR escapes a shell var from Cloud Build's own ${...} substitution.
+  - name: 'hashicorp/packer'
+    entrypoint: 'sh'
+    args:
+      - -c
+      - |
+        set -e
+        . /workspace/scripts/ubuntu/versions.env
+        for cmd in validate build; do
+          packer $$cmd \
+            -var=image_version=${_IMAGE_VERSION} \
+            -var=git_sha=${COMMIT_SHA} \
+            -var=jdk_version=$$JDK_VERSION \
+            -var=tomcat_version=$$TOMCAT_VERSION \
+            -var=nginx_version=$$NGINX_VERSION \
+            -var=maven_version=$$MAVEN_VERSION \
+            -var=node_version=$$NODE_VERSION \
+            -var=claude_code_version=$$CLAUDE_CODE_VERSION \
+            -var=sandbox_runtime_version=$$SANDBOX_RUNTIME_VERSION \
+            -var=playwright_version=$$PLAYWRIGHT_VERSION \
+            -var=reposilite_version=$$REPOSILITE_VERSION \
+            images/ubuntu/ai-coding/image.pkr.hcl
+        done

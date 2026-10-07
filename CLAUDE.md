@@ -43,7 +43,9 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > component owns several files, under a per-component subfolder of it
 > (`scripts/<os>/tomcat/`, `.../otelcol/`, ... — see the layout below).
 > They are owned by this repo. (Maven is intentionally **not** installed into the
-> VM images — WARs are built by the docker `maven` image at build time.)
+> VM images — WARs are built by the docker `maven` image at build time. The one
+> exception is `ai-coding`, whose AI agents build and test the code they write
+> on the VM.)
 > The `docker/` repo (`build-docker`) maintains its **own** equivalent install
 > steps inline in its Dockerfiles — the two are deliberately **independent copies,
 > not a shared source**. Do not reintroduce a cross-repo "single source" coupling;
@@ -82,12 +84,13 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > Upstream names (Tomcat's `catalina.sh`/`setenv.sh`) are not ours to
 > choose.
 
-> **Current state.** Seven flavors are implemented under `images/ubuntu/<flavor>/`,
+> **Current state.** Eight flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-mysql-nginx`,
 > `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
-> static web front door) and `ops` (Ansible + Semaphore UI + ClickHouse +
-> Grafana) — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
+> static web front door), `ops` (Ansible + Semaphore UI + ClickHouse +
+> Grafana) and `ai-coding` (the automated coding system and its AI agents)
+> — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
 > image family is the flavor name with a `dz-` prefix (`dz-tomcat`).
 > Shared installers and
 > pinned versions (plus `FILES_BASE_URL`, the download base) live in
@@ -302,6 +305,15 @@ build-vm-images/
         install-semaphore.sh
         semaphore.service     # installed but NOT enabled at bake (no config yet)
         config.example.json   # baked as /etc/semaphore/config.json.example
+      install-maven.sh        # Maven under /opt/maven (ai-coding only, see above)
+      install-node.sh         # Node.js LTS under /opt/node, the global npm prefix
+      ai-coding/
+        install-build-tools.sh  # gcc, python3-dev, ripgrep, acl, ... for agent builds
+        install-sandbox.sh    # srt + bubblewrap/socat; proves srt runs unprivileged
+        apparmor-sandbox      # userns for bwrap + srt's seccomp helper (Ubuntu 24.04)
+        install-claude.sh     # Claude Code native binary, pinned, checksum-verified
+        install-playwright.sh # Playwright + Chromium in /opt/ms-playwright
+        install-reposilite.sh # the Maven proxy jar only; config is build-ops'
       clickhouse/
         install-clickhouse.sh
         clickhouse-config.xml # baked as config.d/deployza.xml (loopback, log caps, TTLs)
@@ -460,6 +472,15 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
   config, then wipes `/var/lib/clickhouse`: first start writes the server's
   `uuid`, and every VM booted from the image must not share it. See
   `images/ubuntu/ops/ops.md`.
+- `ai-coding` (family `dz-ai-coding`): basic tools + Java + Tomcat + nginx
+  (with `nginx-tomcat.sh`) + Maven + Node + build tools + the agent runtime
+  (Claude Code, `srt`, bubblewrap, socat, an AppArmor `userns` profile) +
+  Playwright with Chromium + the Reposilite jar. It runs ai-coding-server and
+  ai-coding-ui, plus the AI agents that build code on the VM inside the sandbox.
+  **Software only:** the agent user, the sudo rule and launcher, secrets, Maven
+  settings, Reposilite's config and unit, and the WARs all come from build-ops.
+  The bake proves `srt` sandboxes an unprivileged user and Chromium renders a
+  page. See `images/ubuntu/ai-coding/ai-coding.md`.
 
 > **Tomcat's `conf/server.xml` is owned by this repo** — `scripts/ubuntu/tomcat/server.xml`
 > is upstream's file with two deliberate changes (no `AccessLogValve`; a

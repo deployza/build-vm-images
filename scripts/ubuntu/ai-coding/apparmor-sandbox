@@ -1,0 +1,33 @@
+# Installed as /etc/apparmor.d/deployza-sandbox by install-sandbox.sh.
+#
+# Ubuntu 24.04 sets kernel.apparmor_restrict_unprivileged_userns=1: an
+# unprivileged process may still create a user namespace, but it gets no
+# capabilities inside it. bubblewrap (and srt's seccomp helper, which runs
+# inside it) needs capability-bearing namespaces, so without these profiles
+# every sandboxed command fails while writing its uid map.
+#
+# These grant `userns` to exactly those binaries, the same pattern Ubuntu's own
+# profiles use for Chrome and other sandboxing apps. The host-wide restriction
+# stays on; the sysctl is NOT flipped.
+#
+# `unconfined` means the profile adds the userns permission and restricts
+# nothing else. The isolation itself is bwrap's and srt's job, and the
+# isolation tests on the VM check it.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile deployza-bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  include if exists <local/deployza-bwrap>
+}
+
+# srt's pre-built apply-seccomp binaries, under the global npm prefix that
+# install-node.sh sets. Quoted because of the `@` in the npm scope.
+profile deployza-srt-seccomp "/opt/node/lib/node_modules/@anthropic-ai/sandbox-runtime/vendor/**/apply-seccomp*" flags=(unconfined) {
+  userns,
+
+  include if exists <local/deployza-srt-seccomp>
+}

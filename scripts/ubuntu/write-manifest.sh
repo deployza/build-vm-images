@@ -74,6 +74,52 @@ MANIFEST=/etc/image-manifest.txt
     echo
   fi
 
+  # ai-coding flavor: the build toolchains and the agent runtime. Each is
+  # pinned in versions.env; this records what actually landed.
+  if [ -x /opt/maven/bin/mvn ]; then
+    echo "== mvn --version =="
+    JAVA_HOME=/opt/java/latest /opt/maven/bin/mvn --version 2>&1 || true
+    echo
+  fi
+
+  if [ -x /opt/node/bin/node ]; then
+    echo "== node --version / npm --version =="
+    /opt/node/bin/node --version 2>&1 || true
+    /opt/node/bin/npm --version 2>&1 || true
+    echo
+    echo "== global npm packages (srt, playwright) =="
+    /opt/node/bin/npm ls -g --depth=0 2>&1 || true
+    echo
+  fi
+
+  if [ -x /opt/claude/bin/claude ]; then
+    echo "== claude --version =="
+    /opt/claude/bin/claude --version 2>&1 || true
+    rm -rf /root/.claude /root/.claude.json
+    echo
+  fi
+
+  if command -v bwrap >/dev/null 2>&1; then
+    echo "== bwrap --version / AppArmor userns profile =="
+    bwrap --version 2>&1 || true
+    ls -l /etc/apparmor.d/deployza-sandbox 2>&1 || true
+    echo
+  fi
+
+  # The browser build matters as much as the Playwright version: a repo on a
+  # different Playwright release cannot use it.
+  if [ -d /opt/ms-playwright ]; then
+    echo "== playwright browsers (/opt/ms-playwright) =="
+    ls -1 /opt/ms-playwright 2>&1 || true
+    echo
+  fi
+
+  if [ -f /opt/reposilite/reposilite.jar ]; then
+    echo "== reposilite =="
+    cat /opt/reposilite/VERSION 2>/dev/null || true
+    echo
+  fi
+
   # The distro interpreter is the only Python on every flavor (install-basics.sh);
   # apt, gcloud and the baked venvs all run on it.
   echo "== python3 (/usr/bin/python3, distro) =="
