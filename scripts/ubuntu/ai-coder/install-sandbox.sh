@@ -88,10 +88,14 @@ chown "$TEST_USER:" "$TEST_HOME/srt-settings.json"
 # marker string in stdout would match even if the sandbox never started.
 #   1. a write inside the cwd must land (the sandbox started and ran it)
 #   2. a write to a dir the user owns, but outside the cwd, must not
+# The command goes to srt as separate argv words, as build-ops' agent-launcher
+# passes it: srt shell-quotes each word, so "touch x" as one word runs a
+# command literally named `touch x`.
 runuser -u "$TEST_USER" -- env HOME="$TEST_HOME" bash -c '
+  set -x
   cd "$HOME/work"
-  srt --settings "$HOME/srt-settings.json" "touch inside-ok"
-  srt --settings "$HOME/srt-settings.json" "touch $HOME/outside/escaped" || true
+  srt --settings "$HOME/srt-settings.json" touch inside-ok
+  srt --settings "$HOME/srt-settings.json" touch "$HOME/outside/escaped" || true
 '
 test -f "$TEST_HOME/work/inside-ok"
 test ! -e "$TEST_HOME/outside/escaped"
