@@ -63,6 +63,10 @@ TEST_HOME="$(getent passwd "$TEST_USER" | cut -d: -f6)"
 cleanup() { userdel -r "$TEST_USER" 2>/dev/null || true; }
 trap cleanup EXIT
 
+# Run from a directory the test user owns. runuser keeps the caller's cwd,
+# the Packer SSH user's 0750 home, and require() reads package.json from the
+# cwd upward: an unreadable one fails with ERR_INVALID_PACKAGE_CONFIG.
+cd "$TEST_HOME"
 runuser -u "$TEST_USER" -- env HOME="$TEST_HOME" PLAYWRIGHT_BROWSERS_PATH="$PLAYWRIGHT_BROWSERS_PATH" \
     NODE_PATH=/opt/node/lib/node_modules node -e '
 const { chromium } = require("playwright");
@@ -78,6 +82,7 @@ const { chromium } = require("playwright");
 })().catch(e => { console.error(e); process.exit(1); });
 '
 
+cd /
 cleanup
 trap - EXIT
 
