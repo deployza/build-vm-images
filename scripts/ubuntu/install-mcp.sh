@@ -1,5 +1,8 @@
 #!/bin/bash
-# Install the MCP server's RUNTIME: graphify and fastmcp in a venv at /opt/mcp/venv.
+# Install the MCP servers' RUNTIME: graphify, fastmcp, httpx and PyYAML in a venv at
+# /opt/mcp/venv. Two servers run from it: graphify behind its OAuth gateway
+# (src-graphify.deployza.com), and dz-context, the consumer-artifacts server
+# (src-mcp.deployza.com, from image 1-8).
 #
 # THAT IS ALL THIS BAKES. The application — the service user, /etc/mcp/mcp.env,
 # the /usr/local/bin/mcp-* helpers, the OAuth gateway (mcp_auth_app.py), the
@@ -77,6 +80,16 @@ rm -rf /var/lib/apt/lists/*
 # the client registrations, and the disk-backed one raises "DiskStore requires
 # py-key-value-aio[disk]" at construction without this extra. That failure would
 # happen at gateway START.
+#
+# httpx and PyYAML, from 1-8, for the same reason: dz-context (build-ops
+# vm/mcp-vm/dz-context/) imports both directly — httpx for the GitHub API,
+# PyYAML for each repo's dz-project.yaml. Both already arrive transitively
+# (httpx with fastmcp, PyYAML with fastmcp's jsonschema-path), which is exactly
+# why they are named: a dependency nobody declared disappears the day an
+# upstream drops it. Unpinned, like py-key-value-aio: the resolver picks the
+# versions fastmcp and graphify accept, and the manifest records them. A third
+# venv was considered and not chosen: dz-context needs fastmcp, which this one
+# already holds.
 # ---------------------------------------------------------------------------
 mkdir -p /opt/mcp
 python3 -m venv /opt/mcp/venv
@@ -84,14 +97,16 @@ python3 -m venv /opt/mcp/venv
 /opt/mcp/venv/bin/pip install --no-cache-dir \
     "graphifyy[mcp,terraform,sql]==${GRAPHIFY_VERSION}" \
     "fastmcp==${FASTMCP_VERSION}" \
-    "py-key-value-aio[disk]"
+    "py-key-value-aio[disk]" \
+    "httpx" \
+    "pyyaml"
 
 # ---------------------------------------------------------------------------
 # Smoke test: the runtime is importable. Only what THIS script owns — the
 # application's own checks run at push time, against the code being pushed.
 # ---------------------------------------------------------------------------
 /opt/mcp/venv/bin/graphify --version
-/opt/mcp/venv/bin/python -c 'import graphify.serve, fastmcp, key_value.aio.stores.disk'
+/opt/mcp/venv/bin/python -c 'import graphify.serve, fastmcp, key_value.aio.stores.disk, httpx, yaml'
 
-echo "graphify ${GRAPHIFY_VERSION} + fastmcp ${FASTMCP_VERSION} installed (venv /opt/mcp/venv)"
+echo "graphify ${GRAPHIFY_VERSION} + fastmcp ${FASTMCP_VERSION} + httpx + pyyaml installed (venv /opt/mcp/venv)"
 echo "No app, no units: push build-ops' vm/mcp-vm/ to make this VM serve."

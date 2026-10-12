@@ -1,6 +1,6 @@
-# mcp flavor: basics + the runtime of the code knowledge-graph MCP server — a
-# Python venv holding graphify (every tree-sitter grammar) and fastmcp.
-# Family: dz-mcp.
+# mcp flavor: basics + the runtime of mcp-vm's two MCP servers — a Python venv
+# holding graphify (every tree-sitter grammar), fastmcp, and, from 1-8, httpx and
+# PyYAML for dz-context, the consumer-artifacts server. Family: dz-mcp.
 #
 # The first flavor with no Java and no Tomcat. It bakes NO application: the
 # units, helpers, gateway and mcp.env are pushed by build-ops (vm/mcp-vm/).
@@ -92,7 +92,7 @@ source "googlecompute" "mcp" {
 
   image_name              = "dz-mcp-${var.image_version}"
   image_family            = "dz-mcp"
-  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} + fastmcp ${var.fastmcp_version} venv (MCP server runtime) + mkdocs ${var.mkdocs_version} venv (API docs build); the apps are pushed by build-ops. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
+  image_description       = "${var.source_image_family} + graphify ${var.graphify_version} + fastmcp ${var.fastmcp_version} venv (graphify + dz-context MCP servers runtime) + mkdocs ${var.mkdocs_version} venv (API docs build); the apps are pushed by build-ops. Built by Cloud Build (git ${var.git_sha}). Run 'cat /etc/image-manifest.txt' on a VM for full package versions."
   image_labels = {
     flavor   = "mcp"
     graphify = replace(var.graphify_version, ".", "-")

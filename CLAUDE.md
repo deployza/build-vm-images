@@ -87,7 +87,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > **Current state.** Eight flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-mysql-nginx`,
-> `mcp` (the code knowledge-graph MCP server), `nginx` (a lean, Tomcat-free
+> `mcp` (mcp-vm's two MCP servers: graphify and dz-context), `nginx` (a lean, Tomcat-free
 > static web front door), `ops` (Ansible + Semaphore UI + ClickHouse +
 > Grafana) and `ai-coder` (the automated coding system and its AI agents)
 > — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
@@ -276,7 +276,7 @@ build-vm-images/
       install-java.sh
       install-mysql.sh
       install-mkdocs.sh
-      install-mcp.sh          # graphify + fastmcp venv ONLY (mcp); the app is build-ops'
+      install-mcp.sh          # graphify + fastmcp + httpx + pyyaml venv ONLY (mcp); the apps are build-ops'
       install-ansible.sh      # ansible + ansible-core venv, on PATH (ops)
       install-grafana.sh      # Grafana OSS + ClickHouse plugin, NOT enabled
       write-manifest.sh       # bakes /etc/image-manifest.txt (build-system.md §5)
@@ -443,8 +443,9 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `mysql` (family `dz-mysql`): basic tools + MySQL daemon only.
 - `tomcat-mysql` (family `dz-tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
 - `mcp` (family `dz-mcp`): basic tools + a Python venv holding graphify (with
-  its tree-sitter grammars) and fastmcp — the MCP server's runtime only. The
-  server, gateway, refresh and their units are pushed by
+  its tree-sitter grammars), fastmcp, and from 1-8 httpx and PyYAML — the
+  runtime of mcp-vm's two MCP servers, graphify and dz-context, only. The
+  servers, gateway, refresh and their units are pushed by
   `build-ops/vm/mcp-vm/`. **No Java, no Tomcat.** See `images/ubuntu/mcp/mcp.md`.
 - `tomcat-mysql-nginx` (family `dz-tomcat-mysql-nginx`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at

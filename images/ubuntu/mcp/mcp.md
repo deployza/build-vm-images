@@ -1,9 +1,12 @@
 # `mcp` image
 
 GCE image family **`dz-mcp`**: Ubuntu + basic tools + gcloud CLI + the
-**runtime** of the Deployza MCP server — one Python venv at `/opt/mcp/venv`
+**runtime** of mcp-vm's two MCP servers — one Python venv at `/opt/mcp/venv`
 holding [graphify](https://github.com/Graphify-Labs/graphify) (with every
-tree-sitter grammar) and [fastmcp](https://gofastmcp.com).
+tree-sitter grammar), [fastmcp](https://gofastmcp.com), httpx and PyYAML. The
+servers are graphify behind its OAuth gateway (`src-graphify.deployza.com`) and
+dz-context, which serves other repos' consumer artifacts and no code
+(`src-mcp.deployza.com`).
 
 **That is all it bakes.** Since image 1-3 this flavor follows the fleet's split:
 the image carries the software, and the application is pushed to a running VM by
@@ -47,7 +50,9 @@ The first flavor with no Java and no Tomcat.
 - `install-basics.sh`, `install-gcloud.sh` — the baseline
   every flavor gets (git and jq included; see [`../../../CLAUDE.md`](../../../CLAUDE.md))
 - `install-mcp.sh` — `python3-venv` and the venv:
-  `graphifyy[mcp,terraform,sql]`, `fastmcp` and `py-key-value-aio[disk]`,
+  `graphifyy[mcp,terraform,sql]`, `fastmcp`, `py-key-value-aio[disk]`, and from
+  1-8 `httpx` and `pyyaml` (dz-context imports both; they already arrived
+  transitively, and are named now so an upstream change cannot drop them),
   plus an import smoke test
 - `install-mkdocs.sh` (from 1-6) — a second venv at `/opt/mkdocs/venv`:
   `mkdocs` + `mkdocs-material` + `mkdocs-awesome-pages-plugin`, pinned to match
@@ -178,3 +183,4 @@ Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 | 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT was then shared with `website-vm`'s docs-refresh). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
 | 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |
 | 1-6     | 2026-09-29 | **Bakes the MkDocs toolchain** (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`, moved from the `nginx` flavor) for build-ops' new `apidocs-publish` unit, which builds `www-apidocs` here and publishes it to `gs://dz-builds-api-docs`. That unit refuses to install on 1-5 or earlier. **Reaching the running VM means a rebuild** (`mcp-vm-boot` ignores image changes): a new boot disk, so `/data` starts empty — the first graph takes ~12 min and everyone signs in again. |
+| 1-8     | 2026-10-12 | **Names `httpx` and `pyyaml` in the venv** for dz-context, build-ops' new consumer-artifacts MCP server on the same VM (`vm/mcp-vm/dz-context/`, `src-mcp.deployza.com`). Both were already in 1-7 as transitive dependencies of fastmcp, so **dz-context deploys to the running 1-7 VM without a rebuild**: its pre-flight (`dz_context_app.py --self-test`) imports everything it needs from the baked venv and refuses the push if anything is missing. 1-8 matters at the next rebuild, where an upstream that stopped pulling either in would otherwise break it silently. |
