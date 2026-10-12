@@ -58,7 +58,7 @@ variable "nginx_version" {
 }
 
 # NO mkdocs_version since 1-4: the MkDocs toolchain moved to the mcp flavor with
-# the API docs build (build-ops vm/mcp-vm/apidocs-publish.sh). www-vm now only
+# the API docs build (build-ops vm/src-context-vm/apidocs-publish.sh). www-vm now only
 # downloads the built site.
 
 source "googlecompute" "nginx" {

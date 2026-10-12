@@ -4,7 +4,7 @@
 #
 # The mcp VM clones www-apidocs from GitHub and runs `mkdocs build --strict`
 # whenever build-ops' apidocs-publish unit is pushed, then publishes the site to
-# GCS for www-vm to serve (vm/mcp-vm/apidocs-publish.sh) — this script
+# GCS for www-vm to serve (vm/src-context-vm/apidocs-publish.sh) — this script
 # bakes the ONLY part of that which belongs at image-build time: the Python
 # toolchain mkdocs needs. It does not clone www-apidocs, does not run a build,
 # and bakes no repo-specific config; that is all deploy-time work, owned by

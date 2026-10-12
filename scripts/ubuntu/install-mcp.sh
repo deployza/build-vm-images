@@ -8,7 +8,7 @@
 # the /usr/local/bin/mcp-* helpers, the OAuth gateway (mcp_auth_app.py), the
 # Markdown pass (mcp-md-graph and its vendored extractor), the sudoers drop-in and
 # every systemd unit — is PUSHED to a running VM by build-ops
-# (vm/mcp-vm/mcp.sh, `ansible-playbook playbooks/mcp-vm.yml --tags mcp`). Same
+# (vm/src-context-vm/mcp.sh, `ansible-playbook playbooks/src-context-vm.yml --tags mcp`). Same
 # split as every other flavor: the image carries the software, the deploy
 # carries the app and its config. Until image 1-3 this script baked both, so a
 # one-line mcp.env change meant a rebake and a VM replacement (image 1-2 existed
@@ -25,7 +25,7 @@
 #
 # The bake-time checks that used to live here — the gateway's import check against
 # fastmcp and the vendored extractor's drift check against graphify — moved with
-# the code they check. build-ops/vm/mcp-vm/mcp.sh runs both BEFORE it installs
+# the code they check. build-ops/vm/src-context-vm/mcp.sh runs both BEFORE it installs
 # anything, so a GRAPHIFY_VERSION or FASTMCP_VERSION bump that breaks either now
 # fails the first push against the new image rather than the bake.
 set -euxo pipefail
@@ -82,7 +82,7 @@ rm -rf /var/lib/apt/lists/*
 # happen at gateway START.
 #
 # httpx and PyYAML, from 1-8, for the same reason: dz-context (build-ops
-# vm/mcp-vm/dz-context/) imports both directly — httpx for the GitHub API,
+# vm/src-context-vm/dz-context/) imports both directly — httpx for the GitHub API,
 # PyYAML for each repo's dz-project.yaml. Both already arrive transitively
 # (httpx with fastmcp, PyYAML with fastmcp's jsonschema-path), which is exactly
 # why they are named: a dependency nobody declared disappears the day an
@@ -109,4 +109,4 @@ python3 -m venv /opt/mcp/venv
 /opt/mcp/venv/bin/python -c 'import graphify.serve, fastmcp, key_value.aio.stores.disk, httpx, yaml'
 
 echo "graphify ${GRAPHIFY_VERSION} + fastmcp ${FASTMCP_VERSION} + httpx + pyyaml installed (venv /opt/mcp/venv)"
-echo "No app, no units: push build-ops' vm/mcp-vm/ to make this VM serve."
+echo "No app, no units: push build-ops' vm/src-context-vm/ to make this VM serve."

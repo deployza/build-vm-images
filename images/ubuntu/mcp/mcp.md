@@ -1,7 +1,7 @@
 # `mcp` image
 
 GCE image family **`dz-mcp`**: Ubuntu + basic tools + gcloud CLI + the
-**runtime** of mcp-vm's two MCP servers — one Python venv at `/opt/mcp/venv`
+**runtime** of src-context-vm's two MCP servers — one Python venv at `/opt/mcp/venv`
 holding [graphify](https://github.com/Graphify-Labs/graphify) (with every
 tree-sitter grammar), [fastmcp](https://gofastmcp.com), httpx and PyYAML. The
 servers are graphify behind its OAuth gateway (`src-graphify.deployza.com`) and
@@ -14,12 +14,12 @@ build-ops. Everything that makes the venv *the Deployza MCP server* — the `mcp
 service user, `/etc/mcp/mcp.env`, the `/usr/local/bin/mcp-*` helpers, the OAuth
 gateway (`mcp_auth_app.py`), the Markdown pass (`mcp-md-graph` and its vendored
 extractor), the sudoers drop-in and all six systemd units — lives in
-[`build-ops/vm/mcp-vm/`](../../../../build-ops/vm/mcp-vm/) and is installed by
+[`build-ops/vm/src-context-vm/`](../../../../build-ops/vm/src-context-vm/) and is installed by
 its `mcp` unit:
 
 ```bash
-ansible-playbook playbooks/mcp-vm.yml --tags mcp        # from build-ops/ansible
-sudo bash vm/mcp-vm/install.sh prod mcp           # or on the box
+ansible-playbook playbooks/src-context-vm.yml --tags mcp        # from build-ops/ansible
+sudo bash vm/src-context-vm/install.sh prod mcp           # or on the box
 ```
 
 The design, the units and the operator runbook are in
@@ -72,7 +72,7 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 
 Two checks guard the seam between our code and the upstream packages. They
 were bake-time checks while the code was baked; they now run in
-`build-ops/vm/mcp-vm/mcp.sh` **before it installs anything**, against the
+`build-ops/vm/src-context-vm/mcp.sh` **before it installs anything**, against the
 files being pushed and this image's venv:
 
 - **Gateway import check** — `mcp_auth_app.py` imports eight symbols from six
@@ -181,6 +181,6 @@ Consumers launch with `--image-family=dz-mcp --image-project=dz-builds`.
 | ------- | ---------- | ----------------------------------- |
 | 1-0     | 2026-08-31 | Initial `mcp` image. Renamed wholesale from the former `graphify` family — flavor, units, helpers, service user, venv and env file all now say `mcp`; only upstream's own names (`graphifyy`, `graphify.serve`, `GRAPHIFY_API_KEY`, `.graphify`) are unchanged. `/data` moves onto the boot disk, so no `attached_disk` is required; `mcp-boot` still mounts one if present. Carries forward everything the `graphify` family had learned — the gcloud `CLOUDSDK_CONFIG` fix, per-repo failure tolerance in the refresh, and the tokenless Markdown pass with its vendored extractor and bake-time drift check. |
 | 1-2     | 2026-09-09 | `mcp.env`'s `MCP_GITHUB_PAT_SECRET` renamed `mcp-github-pat` → `github-readonly-pat` (the PAT was then shared with `website-vm`'s docs-refresh). Requires `github-readonly-pat` to hold a valid value in Secret Manager *before* this VM replaces the running one, or `mcp-refresh.service` starts failing immediately. |
-| 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |
+| 1-3     | 2026-09-25 | **The application moves out of the image.** This flavor now bakes only the venv (graphify + fastmcp); the `mcp` user, `mcp.env`, every helper, the OAuth gateway, the Markdown pass, the sudoers drop-in and all six units moved to `build-ops/vm/mcp-vm/` (now `vm/src-context-vm/`) and are installed by its `mcp` unit. The gateway import check and the extractor drift check moved with them and run before each push. `install-mcp.sh` moves from `scripts/ubuntu/mcp/` to `scripts/ubuntu/`. **A VM booted from 1-3 serves nothing until `ansible-playbook playbooks/mcp-vm.yml` has run** — do not repoint anything at a 1-3 VM before that. |
 | 1-6     | 2026-09-29 | **Bakes the MkDocs toolchain** (`install-mkdocs.sh`, venv at `/opt/mkdocs/venv`, moved from the `nginx` flavor) for build-ops' new `apidocs-publish` unit, which builds `www-apidocs` here and publishes it to `gs://dz-builds-api-docs`. That unit refuses to install on 1-5 or earlier. **Reaching the running VM means a rebuild** (`mcp-vm-boot` ignores image changes): a new boot disk, so `/data` starts empty — the first graph takes ~12 min and everyone signs in again. |
-| 1-8     | 2026-10-12 | **Names `httpx` and `pyyaml` in the venv** for dz-context, build-ops' new consumer-artifacts MCP server on the same VM (`vm/mcp-vm/dz-context/`, `src-mcp.deployza.com`). Both were already in 1-7 as transitive dependencies of fastmcp, so **dz-context deploys to the running 1-7 VM without a rebuild**: its pre-flight (`dz_context_app.py --self-test`) imports everything it needs from the baked venv and refuses the push if anything is missing. 1-8 matters at the next rebuild, where an upstream that stopped pulling either in would otherwise break it silently. |
+| 1-8     | 2026-10-12 | **Names `httpx` and `pyyaml` in the venv** for dz-context, build-ops' new consumer-artifacts MCP server on the same VM (`vm/src-context-vm/dz-context/`, `src-mcp.deployza.com`). Both were already in 1-7 as transitive dependencies of fastmcp, so **dz-context deploys to the running 1-7 VM without a rebuild**: its pre-flight (`dz_context_app.py --self-test`) imports everything it needs from the baked venv and refuses the push if anything is missing. 1-8 matters at the next rebuild, where an upstream that stopped pulling either in would otherwise break it silently. |

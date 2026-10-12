@@ -70,14 +70,14 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > (`vm/<vm>/<app>.sh`, driven by Ansible). The `mcp` flavor broke this until
 > image 1-3 by baking the whole MCP server — its gateway code, helpers, units
 > and `mcp.env` — so a config change meant a rebake and a VM replacement. It now
-> bakes only `/opt/mcp/venv`; the rest is `build-ops/vm/mcp-vm/`. Hold new
+> bakes only `/opt/mcp/venv`; the rest is `build-ops/vm/src-context-vm/`. Hold new
 > flavors to the same line.
 
 > **Why some scripts have no `.sh`.** The extension tracks **how the file is
 > invoked**. Handed to an interpreter (`bash /tmp/scripts/install-basics.sh`) →
 > keep it. Installed to `/usr/local/bin` and invoked as a command → drop it, and
 > name the file in-tree exactly as it is installed. The `mcp` helpers followed
-> this rule while they lived here (they are in `build-ops/vm/mcp-vm/mcp/` now,
+> this rule while they lived here (they are in `build-ops/vm/src-context-vm/mcp/` now,
 > same names). The shebang carries the language for editors and for graphify's
 > own indexer, but a `**/*.sh` glob will skip such files — **lint by shebang,
 > not by extension**.
@@ -87,7 +87,7 @@ These are self-contained — there is no build-time dependency on a sibling repo
 > **Current state.** Eight flavors are implemented under `images/ubuntu/<flavor>/`,
 > each with an `image.pkr.hcl` + `cloudbuild.yaml` + a `<flavor>.md` doc:
 > `tomcat`, `mysql`, `tomcat-mysql`, `tomcat-mysql-nginx`,
-> `mcp` (mcp-vm's two MCP servers: graphify and dz-context), `nginx` (a lean, Tomcat-free
+> `mcp` (src-context-vm's two MCP servers: graphify and dz-context), `nginx` (a lean, Tomcat-free
 > static web front door), `ops` (Ansible + Semaphore UI + ClickHouse +
 > Grafana) and `ai-coder` (the automated coding system and its AI agents)
 > — `mcp`, `nginx` and `ops` are the flavors with no Java. Every
@@ -444,9 +444,9 @@ uses throughout (Tomcat implies Java, so there is no separate `java-tomcat`).
 - `tomcat-mysql` (family `dz-tomcat-mysql`): basic tools + Java + Tomcat + MySQL.
 - `mcp` (family `dz-mcp`): basic tools + a Python venv holding graphify (with
   its tree-sitter grammars), fastmcp, and from 1-8 httpx and PyYAML — the
-  runtime of mcp-vm's two MCP servers, graphify and dz-context, only. The
+  runtime of src-context-vm's two MCP servers, graphify and dz-context, only. The
   servers, gateway, refresh and their units are pushed by
-  `build-ops/vm/mcp-vm/`. **No Java, no Tomcat.** See `images/ubuntu/mcp/mcp.md`.
+  `build-ops/vm/src-context-vm/`. **No Java, no Tomcat.** See `images/ubuntu/mcp/mcp.md`.
 - `tomcat-mysql-nginx` (family `dz-tomcat-mysql-nginx`): the above plus nginx on
   port 80, able to serve static content and proxy to Tomcat at
   `127.0.0.1:8080`. **The routing between the two is not baked** — the image

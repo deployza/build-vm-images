@@ -1,9 +1,9 @@
-# mcp flavor: basics + the runtime of mcp-vm's two MCP servers — a Python venv
+# mcp flavor: basics + the runtime of src-context-vm's two MCP servers — a Python venv
 # holding graphify (every tree-sitter grammar), fastmcp, and, from 1-8, httpx and
 # PyYAML for dz-context, the consumer-artifacts server. Family: dz-mcp.
 #
 # The first flavor with no Java and no Tomcat. It bakes NO application: the
-# units, helpers, gateway and mcp.env are pushed by build-ops (vm/mcp-vm/).
+# units, helpers, gateway and mcp.env are pushed by build-ops (vm/src-context-vm/).
 # From 1-6 it also bakes the MkDocs venv the apidocs-publish unit builds with.
 # See mcp.md.
 packer {

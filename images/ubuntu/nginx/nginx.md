@@ -37,7 +37,7 @@ Versions are pinned in [`../../../scripts/ubuntu/versions.env`](../../../scripts
 venv at `/opt/mkdocs/venv` so www-vm could clone `www-apidocs` and run
 `mkdocs build --strict` itself — which put a GitHub PAT and an outbound route to
 github.com on the internet-facing web server. The build now runs on the mcp VM
-(build-ops `vm/mcp-vm/apidocs-publish.sh`), which already reaches GitHub for its
+(build-ops `vm/src-context-vm/apidocs-publish.sh`), which already reaches GitHub for its
 graph refresh, and publishes the site to `gs://dz-builds-api-docs`; www-vm's
 `www-apidocs` unit only downloads it, needing nothing beyond `gcloud` and `tar`.
 
